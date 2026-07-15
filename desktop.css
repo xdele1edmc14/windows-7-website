@@ -1,0 +1,24 @@
+.desktop-selection-marquee {
+  position: absolute;
+  z-index: 20;
+  box-sizing: border-box;
+  display: none;
+  pointer-events: none;
+  cursor: default;
+  background: rgba(0, 120, 215, 0.25);
+  border: 1px solid rgba(0, 120, 215, 0.7);
+}
+
+.desktop-selection-marquee.is-active {
+  display: block;
+}
+
+.desktop-icon {
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.desktop-icon.is-selected {
+  background: rgba(0, 120, 215, 0.22);
+  border: 1px solid rgba(120, 195, 245, 0.85);
+}

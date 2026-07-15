@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Windows 7</title>
+  <link rel="stylesheet" href="./node_modules/7.css/dist/7.css">
+  <link rel="stylesheet" href="./desktop.css">
+  <script src="./index.js" defer></script>
+</head>
+<body style="margin: 0; overflow: hidden; background: #000;">
+  <div id="windows-7-root">
+    <section data-desktop aria-label="Desktop" hidden>
+      <div class="window active" id="documents-window" data-window>
+        <div class="title-bar">
+          <div class="title-bar-text">Documents</div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body has-space">
+          <menu role="tablist" aria-label="Explorer sections">
+            <button role="tab" aria-selected="true" aria-controls="documents-panel">Documents</button>
+            <button role="tab" aria-selected="false">Pictures</button>
+            <button role="tab" aria-selected="false">Music</button>
+          </menu>
+          <article id="documents-panel" role="tabpanel">
+            <p>Welcome to your Windows 7 desktop.</p>
+            <fieldset>
+              <legend>Libraries</legend>
+              <ul class="tree-view">
+                <li>Documents</li>
+                <li>Downloads</li>
+                <li>Pictures</li>
+              </ul>
+            </fieldset>
+          </article>
+          <section class="field-row" style="justify-content: flex-end;">
+            <button type="button">Organize</button>
+            <button type="button" class="default">Open</button>
+          </section>
+        </div>
+        <div class="status-bar">
+          <p class="status-bar-field">3 items</p>
+          <p class="status-bar-field">Desktop ready</p>
+        </div>
+      </div>
+
+      <nav data-taskbar aria-label="Windows taskbar">
+        <button type="button" data-start-button aria-label="Start"></button>
+        <button type="button" data-window-task="documents-window">Documents</button>
+        <time data-taskbar-clock aria-label="Current time"></time>
+      </nav>
+    </section>
+  </div>
+  <noscript>This Windows 7 recreation requires JavaScript.</noscript>
+</body>
+</html>
