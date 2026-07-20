@@ -5,14 +5,33 @@
     // Document-relative URLs work both from file:/// and from a web server,
     // including deployments mounted below the server root.
     bootAnimation: "./assets/STARTLUP_ANIMATION.apng",
+    biosAudio: "./assets/startup sound.mp3",
     startupAudio: "./assets/windows-7-startup.mp3",
+    shutdownAudio: "./assets/windows_7_shut_down.mp3",
+    loginAudio: "./assets/login.mp3",
     criticalStopAudio: "./assets/Windows Critical Stop.wav",
+    navigationAudio: "./assets/Windows Navigation Start.wav",
+    busy: "./assets/aero_busy.apng",
+    deskView: "./assets/pc.png",
+    deskAudio: "./assets/pc.mp3",
     wallpaper: "./assets/img0.png",
     loginWallpaper: "./assets/login_screen_wallpaper.jpg",
     userAvatar: "./assets/user_icon.png",
     startOrb: "./assets/start_menu_orb_unpressed.png",
     startOrbHover: "./assets/start_menu_orb_hovered.png",
     startOrbPressed: "./assets/start_menu_orb_pressed.png",
+    about: "./assets/icons/about.png",
+    chrome: "./assets/icons/Chrome-icon.png",
+    cmd: "./assets/icons/cmd.png",
+    calculator: "./assets/icons/calculator.png",
+    notepad: "./assets/icons/notepad.png",
+    documents: "./assets/icons/documents.ico",
+    pictures: "./assets/icons/pictures.ico",
+    music: "./assets/icons/music.ico",
+    computer: "./assets/icons/computer.ico",
+    controlPanel: "./assets/icons/control_panel.ico",
+    defaultPrograms: "./assets/icons/defaultprograms.ico",
+    help: "./assets/icons/helpandsupport.ico",
     networkIcon: "./assets/icons/network.png",
     networkTypeIcon: "./assets/icons/chair.png",
     speakerHardware: "./assets/icons/speaker.png",
@@ -25,6 +44,14 @@
     recycleEmpty: "./assets/icons/recycle_empty.png",
     recycleFull: "./assets/icons/recycle_full.png",
     textFile: "./assets/icons/textfile.png",
+    quickAccess: "./assets/icons/quick access.ico",
+    desktop: "./assets/icons/desktop.ico",
+    downloads: "./assets/icons/downloads.ico",
+    videos: "./assets/icons/videos.ico",
+    systemDrive: "./assets/icons/system.ico",
+    dvdDrive: "./assets/icons/dvddrive.ico",
+    accessDenied: "./assets/icons/access_denied.ico",
+    display: "./assets/display.png",
     contextDisplay: "./assets/icons/networkicon.png",
     contextGadgets: "./assets/icons/gadgets.png",
     contextPersonalize: "./assets/icons/personalize.png",
@@ -41,9 +68,50 @@
 
   const LOGIN_SENTINEL = "••••••••";
   const REQUIRED_PASSWORD = "12345";
+  const USERNAME = "xDele1ed";
+  const HOSTNAME = "WEBOS-PC";
+  const CMD_DEFAULT_TITLE = "C:\\Windows\\system32\\cmd.exe";
+  const CMD_VERSION = "Microsoft Windows [Version 6.1.7601]";
+  const CMD_COLORS = Object.freeze({
+    0: "#000000",
+    1: "#000080",
+    2: "#008000",
+    3: "#008080",
+    4: "#800000",
+    5: "#800080",
+    6: "#808000",
+    7: "#c0c0c0",
+    8: "#808080",
+    9: "#0000ff",
+    A: "#00ff00",
+    B: "#00ffff",
+    C: "#ff0000",
+    D: "#ff00ff",
+    E: "#ffff00",
+    F: "#ffffff"
+  });
   const TASKBAR_HEIGHT = 40;
+  const WINDOW_ANIMATION_MS = 400;
+  const WINDOW_ANIMATION_EASING = "cubic-bezier(0.2, 0.75, 0.25, 1)";
+  const WINDOW_MINIMIZED_SCALE = 0.3;
   const TRANSITION_MS = 600;
+  const POWER_ACTION_LAG_MS = 150;
+  const POWER_TRANSITION_DURATION_MS = 5000;
+  const NO_SIGNAL_DURATION_MS = 3000;
+  const POST_SHUTDOWN_BLACK_DURATION_MS = 1000;
   const BOOT_DURATION_MS = 7000;
+  const BIOS_AUDIO_DURATION_MS = 10000;
+  const BIOS_AUDIO_FADE_MS = 2000;
+  const BIOS_LINE_DELAY_MS = 340;
+  const STARTUP_AUDIO_OFFSET_SECONDS = 0.34;
+  const DESK_IMAGE_WIDTH = 1122;
+  const DESK_IMAGE_HEIGHT = 1402;
+  const POWER_HOTSPOT = Object.freeze({
+    left: 473,
+    top: 1043,
+    right: 667,
+    bottom: 1154
+  });
 
   const assignStyles = (element, styles) => Object.assign(element.style, styles);
 
@@ -80,13 +148,15 @@
     #state;
     #onStart;
     #onChange;
+    #itemSelector;
     #listeners = new AbortController();
 
-    constructor(container, state, { onStart = null, onChange = null } = {}) {
+    constructor(container, state, { onStart = null, onChange = null, itemSelector = "[data-desktop-item-id]" } = {}) {
       this.#container = container;
       this.#state = state;
       this.#onStart = onStart;
       this.#onChange = onChange;
+      this.#itemSelector = itemSelector;
       this.#element = createElement("div", {
         className: "desktop-selection-marquee",
         "aria-hidden": "true"
@@ -122,7 +192,7 @@
     }
 
     #begin(event) {
-      if (event.button !== 0 || event.target.closest("[data-desktop-item-id], input, [data-desktop-context-menu]")) return;
+      if (event.button !== 0 || event.target.closest(`${this.#itemSelector}, input, [data-desktop-context-menu]`)) return;
 
       const point = this.#relativePoint(event.clientX, event.clientY);
       Object.assign(this.#state, {
@@ -200,34 +270,375 @@
     }
   }
 
+  class ShellFileSystem {
+    #sequence = 0;
+    #listeners = new Set();
+
+    constructor() {
+      this.recycleItems = [];
+      this.desktopItems = [
+        this.#node("recycle", "Recycle Bin", "/Desktop", {
+          id: "recycle-bin",
+          permanent: true,
+          targetPath: "/Recycle Bin",
+          x: 10,
+          y: 10
+        }),
+        this.#node("computer", "Computer", "/Desktop", {
+          id: "computer",
+          permanent: true,
+          targetPath: "/Computer",
+          x: 10,
+          y: 96
+        })
+      ];
+
+      const root = (name, icon = null) => this.#node("folder", name, null, {
+        id: `root-${name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        icon,
+        permanent: true
+      });
+      const desktop = root("Desktop", ASSETS.desktop);
+      const documents = root("Documents", ASSETS.documents);
+      const downloads = root("Downloads", ASSETS.downloads);
+      const music = root("Music", ASSETS.music);
+      const pictures = root("Pictures", ASSETS.pictures);
+      const videos = root("Videos", ASSETS.videos);
+      const computer = root("Computer", ASSETS.computer);
+      const recycleBin = root("Recycle Bin", ASSETS.recycleEmpty);
+      desktop.children = this.desktopItems;
+      recycleBin.children = this.recycleItems;
+
+      const localDisk = this.#node("drive", "Local Disk (C:)", "/Computer", {
+        id: "local-disk-c",
+        icon: ASSETS.systemDrive,
+        permanent: true,
+        meta: { capacity: "2.0 GB", free: "1.9 GB" }
+      });
+      ["Program Files", "Program Files (x86)", "Users", "Windows", "ProgramData"].forEach((name) => {
+        const folder = this.#node("folder", name, "/Computer/Local Disk (C:)", {
+          icon: ASSETS.folderFull,
+          permanent: true,
+          meta: { systemFolder: name !== "Users" }
+        });
+        localDisk.children.push(folder);
+        if (name === "Users") {
+          folder.children.push(this.#node("folder", USERNAME, "/Computer/Local Disk (C:)/Users", {
+            icon: ASSETS.folderFull,
+            permanent: true
+          }));
+        }
+      });
+      const dvd = this.#node("dvd", "DVD Drive", "/Computer", {
+        id: "dvd-drive",
+        icon: ASSETS.dvdDrive,
+        permanent: true
+      });
+      computer.children.push(localDisk, dvd);
+
+      this.roots = new Map([
+        ["/Desktop", desktop],
+        ["/Documents", documents],
+        ["/Downloads", downloads],
+        ["/Music", music],
+        ["/Pictures", pictures],
+        ["/Videos", videos],
+        ["/Computer", computer],
+        ["/Recycle Bin", recycleBin]
+      ]);
+    }
+
+    #node(type, name, parentPath, options = {}) {
+      return {
+        id: options.id ?? `fs-item-${++this.#sequence}`,
+        name,
+        type,
+        icon: options.icon ?? null,
+        children: options.children ?? [],
+        parentPath,
+        parentId: options.parentId ?? null,
+        permanent: Boolean(options.permanent),
+        targetPath: options.targetPath ?? null,
+        meta: options.meta ?? {},
+        file: options.file ?? null,
+        x: options.x ?? 10,
+        y: options.y ?? 10,
+        isSelected: false,
+        isDropTarget: false
+      };
+    }
+
+    nextId() {
+      return `fs-item-${++this.#sequence}`;
+    }
+
+    subscribe(listener) {
+      this.#listeners.add(listener);
+      return () => this.#listeners.delete(listener);
+    }
+
+    emit(detail = {}) {
+      this.#listeners.forEach((listener) => listener(detail));
+    }
+
+    resolve(path) {
+      if (path === "/Quick Access") {
+        return { id: "quick-access", name: "Quick Access", type: "virtual", parentPath: null, children: [] };
+      }
+      const direct = this.roots.get(path);
+      if (direct) return direct;
+
+      const rootPath = [...this.roots.keys()]
+        .filter((candidate) => path.startsWith(`${candidate}/`))
+        .sort((first, second) => second.length - first.length)[0];
+      if (!rootPath) return null;
+
+      let node = this.roots.get(rootPath);
+      const remainder = path.slice(rootPath.length + 1).split("/").filter(Boolean);
+      for (const [index, name] of remainder.entries()) {
+        const children = rootPath === "/Desktop" && index === 0
+          ? this.desktopItems.filter(({ parentId }) => parentId === null)
+          : node?.children ?? [];
+        node = children.find((child) => child.name === decodeURIComponent(name));
+        if (!node) return null;
+      }
+      return node;
+    }
+
+    list(path) {
+      if (path === "/Quick Access") {
+        const shortcuts = [
+          ["Desktop", "/Desktop", ASSETS.desktop],
+          ["Downloads", "/Downloads", ASSETS.downloads],
+          ["Documents", "/Documents", ASSETS.documents],
+          ["Pictures", "/Pictures", ASSETS.pictures],
+          ["Music", "/Music", ASSETS.music],
+          ["Videos", "/Videos", ASSETS.videos]
+        ];
+        return shortcuts.map(([name, targetPath, icon]) => ({
+          id: `shortcut-${name.toLocaleLowerCase()}`,
+          name,
+          type: "shortcut",
+          icon,
+          children: [],
+          parentPath: "/Quick Access",
+          targetPath,
+          permanent: true,
+          meta: {}
+        }));
+      }
+      if (path === "/Desktop") return this.desktopItems.filter(({ parentId }) => parentId === null);
+      return this.resolve(path)?.children ?? [];
+    }
+
+    pathFor(node) {
+      if (!node) return null;
+      if (node.targetPath && ["computer", "recycle"].includes(node.type)) return node.targetPath;
+      return node.parentPath ? `${node.parentPath}/${node.name}` : `/${node.name}`;
+    }
+
+    uniqueName(parentPath, requestedName, type = "folder", excludedId = null) {
+      const names = new Set(this.list(parentPath)
+        .filter(({ id }) => id !== excludedId)
+        .map(({ name }) => name.toLocaleLowerCase()));
+      if (!names.has(requestedName.toLocaleLowerCase())) return requestedName;
+
+      const dotIndex = type !== "folder" ? requestedName.lastIndexOf(".") : -1;
+      const base = dotIndex > 0 ? requestedName.slice(0, dotIndex) : requestedName;
+      const extension = dotIndex > 0 ? requestedName.slice(dotIndex) : "";
+      let index = 2;
+      let candidate = `${base} (${index})${extension}`;
+      while (names.has(candidate.toLocaleLowerCase())) {
+        index += 1;
+        candidate = `${base} (${index})${extension}`;
+      }
+      return candidate;
+    }
+
+    create(parentPath, type, requestedName, options = {}) {
+      const parent = this.resolve(parentPath);
+      if (!parent || !["folder", "drive"].includes(parent.type)) return null;
+      const name = this.uniqueName(parentPath, requestedName, type);
+      const node = this.#node(type, name, parentPath, {
+        file: options.file ?? null,
+        icon: options.icon ?? null,
+        parentId: parentPath.startsWith("/Desktop/") ? parent.id : null,
+        x: options.x ?? 10,
+        y: options.y ?? 10
+      });
+      parent.children.push(node);
+      if (parentPath.startsWith("/Desktop/") && !this.desktopItems.includes(node)) {
+        this.desktopItems.push(node);
+      }
+      this.emit({ type: "create", path: this.pathFor(node) });
+      return node;
+    }
+
+    rename(node, requestedName) {
+      if (!node || node.permanent || !node.parentPath) return false;
+      const nextName = this.uniqueName(node.parentPath, requestedName.trim() || node.name, node.type, node.id);
+      node.name = nextName;
+      this.#refreshDescendantPaths(node);
+      this.emit({ type: "rename", node });
+      return true;
+    }
+
+    move(nodes, targetPath) {
+      const target = this.resolve(targetPath);
+      if (!target || !["folder", "drive"].includes(target.type)) return false;
+      const movable = nodes.filter((node) => node && !node.permanent && node.parentPath !== targetPath);
+      movable.forEach((node) => {
+        this.#detach(node);
+        node.name = this.uniqueName(targetPath, node.name, node.type);
+        node.parentPath = targetPath;
+        node.parentId = targetPath.startsWith("/Desktop/") ? target.id : null;
+        node.isSelected = false;
+        node.isDropTarget = false;
+        target.children.push(node);
+        this.#refreshDescendantPaths(node);
+        if (targetPath === "/Desktop" || targetPath.startsWith("/Desktop/")) this.#addDesktopSubtree(node);
+        else this.#removeDesktopSubtree(node);
+      });
+      if (movable.length > 0) this.emit({ type: "move", targetPath });
+      return movable.length > 0;
+    }
+
+    copy(nodes, targetPath) {
+      const target = this.resolve(targetPath);
+      if (!target || !["folder", "drive"].includes(target.type)) return [];
+      const copies = nodes.filter((node) => node && !node.permanent).map((node) => {
+        const clone = this.#cloneNode(node, targetPath);
+        clone.name = this.uniqueName(targetPath, node.name, node.type);
+        clone.parentId = targetPath.startsWith("/Desktop/") ? target.id : null;
+        target.children.push(clone);
+        if (targetPath === "/Desktop" || targetPath.startsWith("/Desktop/")) this.#addDesktopSubtree(clone);
+        return clone;
+      });
+      if (copies.length > 0) this.emit({ type: "copy", targetPath });
+      return copies;
+    }
+
+    trash(nodes) {
+      const removed = nodes.filter((node) => node && !node.permanent);
+      removed.forEach((node) => {
+        const originalPath = this.pathFor(node);
+        this.#detach(node);
+        this.#removeDesktopSubtree(node);
+        node.name = this.uniqueName("/Recycle Bin", node.name, node.type);
+        node.parentPath = "/Recycle Bin";
+        node.parentId = null;
+        node.meta = { ...node.meta, originalPath, deletedAt: new Date() };
+        node.isSelected = false;
+        node.isDropTarget = false;
+        this.recycleItems.push(node);
+        this.#refreshDescendantPaths(node);
+      });
+      if (removed.length > 0) this.emit({ type: "trash" });
+      return removed.length > 0;
+    }
+
+    emptyRecycleBin() {
+      if (this.recycleItems.length === 0) return;
+      this.recycleItems.splice(0);
+      this.emit({ type: "empty-recycle-bin" });
+    }
+
+    #detach(node) {
+      const siblings = node.parentPath === "/Desktop" ? this.desktopItems : this.list(node.parentPath);
+      const index = siblings.indexOf(node);
+      if (index >= 0) siblings.splice(index, 1);
+    }
+
+    #cloneNode(node, parentPath) {
+      const clone = this.#node(node.type, node.name, parentPath, {
+        icon: node.icon,
+        file: node.file,
+        x: node.x + 18,
+        y: node.y + 18,
+        meta: { ...node.meta }
+      });
+      clone.children = node.children.map((child) => {
+        const childClone = this.#cloneNode(child, `${parentPath}/${clone.name}`);
+        childClone.parentId = parentPath.startsWith("/Desktop") ? clone.id : null;
+        return childClone;
+      });
+      return clone;
+    }
+
+    #refreshDescendantPaths(node) {
+      const path = this.pathFor(node);
+      node.children.forEach((child) => {
+        child.parentPath = path;
+        child.parentId = path.startsWith("/Desktop") ? node.id : null;
+        this.#refreshDescendantPaths(child);
+      });
+    }
+
+    #addDesktopSubtree(node) {
+      if (!this.desktopItems.includes(node)) this.desktopItems.push(node);
+      node.children.forEach((child) => this.#addDesktopSubtree(child));
+    }
+
+    #removeDesktopSubtree(node) {
+      const descendants = new Set();
+      const collect = (entry) => {
+        descendants.add(entry);
+        entry.children.forEach(collect);
+      };
+      collect(node);
+      for (let index = this.desktopItems.length - 1; index >= 0; index -= 1) {
+        if (descendants.has(this.desktopItems[index])) this.desktopItems.splice(index, 1);
+      }
+    }
+  }
+
   class Windows7Engine {
     #root;
     #desktop;
+    #desktopTemplate;
     #taskbar;
     #state = "boot";
+    #bootedAt = performance.now();
     #highestZIndex = 100;
     #drag = null;
     #dragFrame = 0;
+    #resize = null;
+    #resizeFrame = 0;
+    #biosAudio = null;
+    #biosFadeFrame = 0;
     #startupAudio = null;
+    #shutdownAudio = null;
+    #loginAudio = null;
     #criticalStopAudio = null;
+    #navigationAudio = null;
+    #deskAudio = null;
+    #deskImage = null;
+    #powerAssetPreload = null;
+    #powerSequenceInProgress = false;
     #startupSoundHasPlayed = false;
-    #audioUnlockController = null;
     #loginScreen = null;
+    #loginSubmissionInProgress = false;
     #clockTimer = 0;
     #analogClockTimer = 0;
     #trayFlyout = null;
     #trayFlyoutOwner = null;
     #trayTooltip = null;
+    #startMenu = null;
+    #startMenuCloseTimer = 0;
     #volumeIcon = null;
     #volume = 100;
     #desktopIconLayer = null;
     #desktopContextMenu = null;
     #desktopFileInput = null;
-    #desktopItems = [];
-    #recycleBinState = [];
+    #fileSystem = new ShellFileSystem();
+    #fileSystemUnsubscribe = null;
+    #explorerWindows = new Map();
+    #explorerSequence = 0;
+    #shellClipboard = null;
     #selectedDesktopItemId = null;
     #desktopItemDrag = null;
     #desktopItemDragFrame = 0;
+    #lastDesktopClick = { itemId: null, time: 0 };
     #desktopRefreshTimer = 0;
     #desktopMarquee = null;
     #desktopSelectionState = {
@@ -242,10 +653,9 @@
     #desktopIconSize = "medium";
     #desktopAutoArrange = false;
     #desktopAlignToGrid = true;
-    #desktopClipboard = null;
     #contextMenuPoint = { x: 16, y: 96 };
     #listeners = new AbortController();
-    #minimizedChildren = new WeakMap();
+    #windowAnimations = new WeakMap();
 
     constructor(root) {
       this.#root = root;
@@ -255,6 +665,8 @@
       if (!this.#desktop) {
         throw new Error("Windows7Engine requires a [data-desktop] element.");
       }
+
+      this.#desktopTemplate = this.#desktop.cloneNode(true);
     }
 
     async start() {
@@ -262,27 +674,37 @@
       this.#configureDesktop();
       this.#configureDesktopItems();
       this.#bindWindowManager();
+      this.#prepareAudioElements();
 
-      const bootScreen = this.#createBootScreen();
-      this.#root.append(bootScreen);
+      // Browsers only guarantee unmuted media after a real user gesture. Gate
+      // the boot once, then perform the full boot/login pipeline in the same
+      // activated document so the login cue cannot be rejected at random.
+      const startupGate = this.#createStartupGate();
+      this.#root.append(startupGate);
+      await this.#waitForStartupGesture(startupGate);
+      startupGate.remove();
 
-      // Asset loading and a short authentic boot hold run concurrently. The
-      // transition cannot advance until both have completed.
-      await Promise.all([this.#preloadDesktopAssets(), wait(BOOT_DURATION_MS)]);
-      await this.#showLoginScreen(bootScreen);
+      await this.#runBootSequence();
     }
 
     destroy() {
       this.#cancelDrag();
+      this.#cancelResize();
       this.#cancelDesktopItemDrag();
       this.#desktopMarquee?.destroy();
       this.#listeners.abort();
-      this.#audioUnlockController?.abort();
       window.clearInterval(this.#clockTimer);
       window.clearInterval(this.#analogClockTimer);
       window.clearTimeout(this.#desktopRefreshTimer);
+      window.clearTimeout(this.#startMenuCloseTimer);
+      cancelAnimationFrame(this.#biosFadeFrame);
+      this.#biosAudio?.pause();
       this.#startupAudio?.pause();
+      this.#shutdownAudio?.pause();
+      this.#loginAudio?.pause();
       this.#criticalStopAudio?.pause();
+      this.#navigationAudio?.pause();
+      this.#stopDeskAudio();
     }
 
     #configureRoot() {
@@ -315,8 +737,15 @@
       this.#desktop.querySelectorAll(".window").forEach((windowElement, index) => {
         const desktopWidth = this.#desktop.clientWidth || window.innerWidth;
         const desktopHeight = this.#desktop.clientHeight || window.innerHeight;
-        const width = Math.min(820, Math.max(1, desktopWidth - 32));
-        const height = Math.min(520, Math.max(1, desktopHeight - TASKBAR_HEIGHT - 32));
+        const defaultWidth = windowElement.dataset.appWindow === "about" ? 580 : 820;
+        const defaultHeight = windowElement.dataset.appWindow === "about" ? 410 : 520;
+        const preferredWidth = Number(windowElement.dataset.windowWidth) || defaultWidth;
+        const preferredHeight = Number(windowElement.dataset.windowHeight) || defaultHeight;
+        const preferredMinWidth = Number(windowElement.dataset.windowMinWidth) || 360;
+        const preferredMinHeight = Number(windowElement.dataset.windowMinHeight) || 240;
+        const isFixedSize = windowElement.hasAttribute("data-fixed-size");
+        const width = Math.min(preferredWidth, Math.max(1, desktopWidth - 32));
+        const height = Math.min(preferredHeight, Math.max(1, desktopHeight - TASKBAR_HEIGHT - 32));
 
         assignStyles(windowElement, {
           position: "absolute",
@@ -325,6 +754,8 @@
           top: `${Math.max(0, (desktopHeight - TASKBAR_HEIGHT - height) / 2 + index * 24)}px`,
           width: `${width}px`,
           height: `${height}px`,
+          minWidth: `${isFixedSize ? width : Math.min(preferredMinWidth, desktopWidth)}px`,
+          minHeight: `${isFixedSize ? height : Math.min(preferredMinHeight, Math.max(1, desktopHeight - TASKBAR_HEIGHT))}px`,
           maxWidth: "100%",
           display: "flex",
           flexDirection: "column",
@@ -349,12 +780,875 @@
         windowElement.querySelectorAll("button").forEach((button) => {
           button.style.cursor = `url("${ASSETS.cursorLink}") 6 2, pointer`;
         });
+        if (!isFixedSize) this.#configureResizeHandles(windowElement);
       });
 
+      this.#configureCalculator();
+      this.#configureCommandPrompt();
       this.#configureTaskbar();
+      this.#configureStartMenu();
       this.#configureSystemTray();
       this.#updateClock();
       this.#clockTimer = window.setInterval(() => this.#updateClock(), 30_000);
+    }
+
+    #configureCalculator() {
+      const calculatorWindow = this.#desktop.querySelector('[data-app-window="calculator"]');
+      const display = calculatorWindow?.querySelector("[data-calculator-display]");
+      const memoryIndicator = calculatorWindow?.querySelector("[data-calculator-memory-indicator]");
+      if (!calculatorWindow || !display || !memoryIndicator) return;
+
+      const memoryClearButton = calculatorWindow.querySelector('[data-calculator-action="memory-clear"]');
+      const memoryRecallButton = calculatorWindow.querySelector('[data-calculator-action="memory-recall"]');
+      const maximumEntryDigits = 16;
+      const state = {
+        entry: "0",
+        accumulator: null,
+        pendingOperator: null,
+        lastOperator: null,
+        lastOperand: null,
+        replaceEntry: false,
+        errorMessage: "",
+        memory: 0,
+        hasMemory: false
+      };
+
+      const render = () => {
+        display.textContent = state.errorMessage || state.entry;
+        display.closest(".calculator-display")?.classList.toggle("is-error", Boolean(state.errorMessage));
+        memoryIndicator.textContent = state.hasMemory ? "M" : "";
+        if (memoryClearButton) memoryClearButton.disabled = !state.hasMemory;
+        if (memoryRecallButton) memoryRecallButton.disabled = !state.hasMemory;
+      };
+
+      const clearArithmetic = () => {
+        state.entry = "0";
+        state.accumulator = null;
+        state.pendingOperator = null;
+        state.lastOperator = null;
+        state.lastOperand = null;
+        state.replaceEntry = false;
+        state.errorMessage = "";
+      };
+
+      const clearAll = () => {
+        clearArithmetic();
+        state.memory = 0;
+        state.hasMemory = false;
+        render();
+      };
+
+      const currentValue = () => Number(state.entry);
+      const entryDigitCount = () => state.entry.replace(/[^0-9]/g, "").length;
+      const trimExponential = (value) => value
+        .replace(/(\.\d*?[1-9])0+e/, "$1e")
+        .replace(/\.0+e/, "e")
+        .replace("e+", "e+");
+
+      const formatNumber = (value) => {
+        if (Object.is(value, -0)) return "0";
+        const rounded = Number(Number(value).toPrecision(15));
+        const absolute = Math.abs(rounded);
+        let formatted = String(rounded);
+
+        if ((absolute >= 1e15 || (absolute > 0 && absolute < 1e-9)) || formatted.length > 16) {
+          formatted = trimExponential(rounded.toExponential(9));
+        }
+        return formatted;
+      };
+
+      const fail = (message) => {
+        state.errorMessage = message;
+        state.accumulator = null;
+        state.pendingOperator = null;
+        state.lastOperator = null;
+        state.lastOperand = null;
+        state.replaceEntry = true;
+        render();
+      };
+
+      const setResult = (value) => {
+        if (!Number.isFinite(value)) {
+          fail("Overflow");
+          return false;
+        }
+        state.entry = formatNumber(value);
+        state.errorMessage = "";
+        return true;
+      };
+
+      const calculate = (left, right, operator) => {
+        let result;
+        if (operator === "add") result = left + right;
+        if (operator === "subtract") result = left - right;
+        if (operator === "multiply") result = left * right;
+        if (operator === "divide") {
+          if (right === 0) {
+            fail("Cannot divide by zero");
+            return null;
+          }
+          result = left / right;
+        }
+        return Number.isFinite(result) ? result : null;
+      };
+
+      const recoverForEntry = () => {
+        if (!state.errorMessage) return;
+        clearArithmetic();
+      };
+
+      const inputDigit = (digit) => {
+        recoverForEntry();
+        if (state.replaceEntry) {
+          if (state.pendingOperator === null) {
+            state.accumulator = null;
+            state.lastOperator = null;
+            state.lastOperand = null;
+          }
+          state.entry = digit;
+          state.replaceEntry = false;
+        } else if (state.entry === "0") {
+          state.entry = digit;
+        } else if (state.entry === "-0") {
+          state.entry = `-${digit}`;
+        } else if (entryDigitCount() < maximumEntryDigits) {
+          state.entry += digit;
+        }
+        render();
+      };
+
+      const inputDecimal = () => {
+        recoverForEntry();
+        if (state.replaceEntry) {
+          if (state.pendingOperator === null) {
+            state.accumulator = null;
+            state.lastOperator = null;
+            state.lastOperand = null;
+          }
+          state.entry = "0.";
+          state.replaceEntry = false;
+        } else if (!state.entry.includes(".") && !state.entry.includes("e")) {
+          state.entry += ".";
+        }
+        render();
+      };
+
+      const chooseOperator = (operator) => {
+        if (state.errorMessage) return;
+        const value = currentValue();
+
+        if (state.pendingOperator && !state.replaceEntry) {
+          const result = calculate(state.accumulator ?? 0, value, state.pendingOperator);
+          if (result === null) {
+            if (!state.errorMessage) fail("Overflow");
+            return;
+          }
+          if (!setResult(result)) return;
+          state.accumulator = result;
+        } else if (state.accumulator === null || !state.pendingOperator) {
+          state.accumulator = value;
+        }
+
+        state.pendingOperator = operator;
+        state.lastOperator = null;
+        state.lastOperand = null;
+        state.replaceEntry = true;
+        render();
+      };
+
+      const equals = () => {
+        if (state.errorMessage) return;
+        let operator = state.pendingOperator;
+        let operand = currentValue();
+        let left = state.accumulator ?? operand;
+
+        if (!operator && state.lastOperator) {
+          operator = state.lastOperator;
+          operand = state.lastOperand;
+          left = currentValue();
+        }
+        if (!operator || operand === null) return;
+
+        const result = calculate(left, operand, operator);
+        if (result === null) {
+          if (!state.errorMessage) fail("Overflow");
+          return;
+        }
+        if (!setResult(result)) return;
+
+        state.accumulator = result;
+        state.lastOperator = operator;
+        state.lastOperand = operand;
+        state.pendingOperator = null;
+        state.replaceEntry = true;
+        render();
+      };
+
+      const clearEntry = () => {
+        if (state.errorMessage) {
+          clearArithmetic();
+        } else {
+          state.entry = "0";
+          state.replaceEntry = true;
+          if (!state.pendingOperator) {
+            state.accumulator = null;
+            state.lastOperator = null;
+            state.lastOperand = null;
+          }
+        }
+        render();
+      };
+
+      const backspace = () => {
+        if (state.errorMessage || state.replaceEntry) return;
+        state.entry = state.entry.length <= 1 || (state.entry.startsWith("-") && state.entry.length === 2)
+          ? "0"
+          : state.entry.slice(0, -1);
+        render();
+      };
+
+      const changeSign = () => {
+        if (state.errorMessage || currentValue() === 0) return;
+        state.entry = state.entry.startsWith("-") ? state.entry.slice(1) : `-${state.entry}`;
+        state.replaceEntry = false;
+        render();
+      };
+
+      const squareRoot = () => {
+        if (state.errorMessage) return;
+        const value = currentValue();
+        if (value < 0) {
+          fail("Invalid input");
+          return;
+        }
+        if (!setResult(Math.sqrt(value))) return;
+        state.replaceEntry = true;
+        render();
+      };
+
+      const reciprocal = () => {
+        if (state.errorMessage) return;
+        const value = currentValue();
+        if (value === 0) {
+          fail("Cannot divide by zero");
+          return;
+        }
+        if (!setResult(1 / value)) return;
+        state.replaceEntry = true;
+        render();
+      };
+
+      const percent = () => {
+        if (state.errorMessage) return;
+        const value = currentValue();
+        const result = state.pendingOperator === "add" || state.pendingOperator === "subtract"
+          ? (state.accumulator ?? 0) * value / 100
+          : value / 100;
+        if (!setResult(result)) return;
+        state.replaceEntry = true;
+        render();
+      };
+
+      const storeMemory = (operation) => {
+        if (operation === "memory-clear") {
+          state.memory = 0;
+          state.hasMemory = false;
+          render();
+          return;
+        }
+        if (operation === "memory-recall") {
+          if (!state.hasMemory) return;
+          if (state.errorMessage) clearArithmetic();
+          state.entry = formatNumber(state.memory);
+          state.replaceEntry = true;
+          render();
+          return;
+        }
+        if (state.errorMessage) return;
+
+        const value = currentValue();
+        if (operation === "memory-store") state.memory = value;
+        if (operation === "memory-add") state.memory = (state.hasMemory ? state.memory : 0) + value;
+        if (operation === "memory-subtract") state.memory = (state.hasMemory ? state.memory : 0) - value;
+        if (!Number.isFinite(state.memory)) {
+          fail("Overflow");
+          return;
+        }
+        state.hasMemory = true;
+        state.replaceEntry = true;
+        render();
+      };
+
+      const runAction = (action, value = "") => {
+        if (action === "digit") inputDigit(value);
+        if (action === "decimal") inputDecimal();
+        if (action === "operator") chooseOperator(value);
+        if (action === "equals") equals();
+        if (action === "clear-entry") clearEntry();
+        if (action === "clear") {
+          clearArithmetic();
+          render();
+        }
+        if (action === "backspace") backspace();
+        if (action === "sign") changeSign();
+        if (action === "square-root") squareRoot();
+        if (action === "reciprocal") reciprocal();
+        if (action === "percent") percent();
+        if (action.startsWith("memory-")) storeMemory(action);
+      };
+
+      calculatorWindow.addEventListener("click", (event) => {
+        const key = event.target.closest("[data-calculator-action]");
+        if (!key || !calculatorWindow.contains(key) || key.disabled) return;
+        runAction(key.dataset.calculatorAction, key.dataset.calculatorValue ?? "");
+      }, { signal: this.#listeners.signal });
+
+      calculatorWindow.addEventListener("calculator:reset", clearAll, {
+        signal: this.#listeners.signal
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (calculatorWindow.hidden ||
+            calculatorWindow.classList.contains("minimized") ||
+            !calculatorWindow.classList.contains("active") ||
+            event.ctrlKey || event.altKey || event.metaKey ||
+            event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+
+        let action = "";
+        let value = "";
+        if (/^[0-9]$/.test(event.key)) {
+          action = "digit";
+          value = event.key;
+        } else if (event.key === "." || event.key === ",") action = "decimal";
+        else if (event.key === "+") {
+          action = "operator";
+          value = "add";
+        } else if (event.key === "-") {
+          action = "operator";
+          value = "subtract";
+        } else if (event.key === "*") {
+          action = "operator";
+          value = "multiply";
+        } else if (event.key === "/") {
+          action = "operator";
+          value = "divide";
+        } else if (event.key === "Enter" || event.key === "=") action = "equals";
+        else if (event.key === "Escape") action = "clear";
+        else if (event.key === "Delete") action = "clear-entry";
+        else if (event.key === "Backspace") action = "backspace";
+        else if (event.key === "%") action = "percent";
+        else if (event.key === "F9") action = "sign";
+        if (!action) return;
+
+        event.preventDefault();
+        runAction(action, value);
+      }, { signal: this.#listeners.signal });
+
+      clearAll();
+    }
+
+    #configureCommandPrompt() {
+      const cmdWindow = this.#desktop.querySelector('[data-app-window="cmd"]');
+      const terminal = cmdWindow?.querySelector("[data-cmd-terminal]");
+      const scrollback = cmdWindow?.querySelector("[data-cmd-scrollback]");
+      const currentLine = cmdWindow?.querySelector("[data-cmd-current-line]");
+      const prompt = cmdWindow?.querySelector("[data-cmd-prompt]");
+      const input = cmdWindow?.querySelector("[data-cmd-input]");
+      const measure = cmdWindow?.querySelector("[data-cmd-input-measure]");
+      const cursor = cmdWindow?.querySelector("[data-cmd-cursor]");
+      const title = cmdWindow?.querySelector("[data-cmd-title]");
+      if (!cmdWindow || !terminal || !scrollback || !currentLine || !prompt || !input || !measure || !cursor || !title) return;
+
+      const drivePath = "/Computer/Local Disk (C:)";
+      const homePath = `${drivePath}/Users/${USERNAME}`;
+      const state = {
+        cwd: homePath,
+        history: [],
+        historyIndex: 0,
+        historyDraft: "",
+        foreground: "7",
+        background: "0",
+        running: false,
+        session: 0,
+        allowAutoScroll: true
+      };
+      const commandEntries = [];
+      const commands = new Map();
+
+      const windowsPath = (fileSystemPath) => {
+        if (!fileSystemPath?.startsWith(drivePath)) return "C:\\";
+        const remainder = fileSystemPath.slice(drivePath.length).split("/").filter(Boolean);
+        return remainder.length > 0 ? `C:\\${remainder.join("\\")}` : "C:\\";
+      };
+      const promptText = () => `${windowsPath(state.cwd)}>`;
+      const isDirectory = (node) => Boolean(node && ["folder", "drive"].includes(node.type));
+      const childDirectory = (parentPath, name) => this.#fileSystem.list(parentPath).find((node) =>
+        isDirectory(node) && node.name.localeCompare(name, undefined, { sensitivity: "base" }) === 0);
+      const resolveCommandPath = (requestedPath, cwd = state.cwd) => {
+        let requested = requestedPath.trim().replace(/^\/d\s+/i, "").replaceAll("/", "\\");
+        if (!requested || requested === ".") return cwd;
+
+        let path = cwd;
+        if (/^[a-z]:/i.test(requested)) {
+          if (!/^c:/i.test(requested)) return null;
+          path = drivePath;
+          requested = requested.slice(2).replace(/^\\+/, "");
+        } else if (requested.startsWith("\\")) {
+          path = drivePath;
+          requested = requested.replace(/^\\+/, "");
+        }
+
+        for (const segment of requested.split("\\").filter(Boolean)) {
+          if (segment === ".") continue;
+          if (segment === "..") {
+            if (path !== drivePath) path = this.#fileSystem.resolve(path)?.parentPath ?? drivePath;
+            continue;
+          }
+          const child = childDirectory(path, segment);
+          if (!child) return null;
+          path = this.#fileSystem.pathFor(child);
+        }
+        return path;
+      };
+      const scrollToBottom = (force = false) => {
+        if (!force && !state.allowAutoScroll) return;
+        terminal.scrollTop = terminal.scrollHeight;
+      };
+      const appendLine = (text = "", className = "") => {
+        const line = createElement("div", {
+          className: `cmd-output-line${className ? ` ${className}` : ""}`,
+          text
+        });
+        scrollback.append(line);
+        scrollToBottom();
+        return line;
+      };
+      const writeText = (text) => {
+        String(text).split("\n").forEach((line) => appendLine(line));
+      };
+      const updateCursor = () => {
+        const caret = input.selectionStart ?? input.value.length;
+        measure.textContent = input.value.slice(0, caret) || "";
+        const width = measure.getBoundingClientRect().width;
+        const available = Math.max(0, input.clientWidth - 8);
+        cursor.style.left = `${Math.min(available, Math.max(0, width - input.scrollLeft))}px`;
+      };
+      const restartCursorBlink = () => {
+        cursor.classList.add("is-resetting");
+        void cursor.offsetWidth;
+        cursor.classList.remove("is-resetting");
+        updateCursor();
+      };
+      const updatePrompt = () => {
+        prompt.textContent = promptText();
+        requestAnimationFrame(updateCursor);
+      };
+      const focusInput = () => {
+        if (!cmdWindow.hidden && !cmdWindow.classList.contains("minimized") && !state.running) {
+          input.focus({ preventScroll: true });
+          restartCursorBlink();
+        }
+      };
+      const setTitle = (nextTitle) => {
+        const value = nextTitle || CMD_DEFAULT_TITLE;
+        title.textContent = value;
+        this.#updateWindowTaskLabel(cmdWindow, value);
+      };
+      const setColor = (pair = "07") => {
+        state.background = pair[0];
+        state.foreground = pair[1];
+        terminal.style.setProperty("--cmd-background", CMD_COLORS[state.background]);
+        terminal.style.setProperty("--cmd-foreground", CMD_COLORS[state.foreground]);
+      };
+      const formatUptime = () => {
+        let seconds = Math.max(0, Math.floor((performance.now() - this.#bootedAt) / 1000));
+        const days = Math.floor(seconds / 86400);
+        seconds %= 86400;
+        const hours = Math.floor(seconds / 3600);
+        seconds %= 3600;
+        const minutes = Math.floor(seconds / 60);
+        seconds %= 60;
+        const parts = [];
+        if (days) parts.push(`${days} day${days === 1 ? "" : "s"}`);
+        if (hours) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
+        if (minutes) parts.push(`${minutes} min`);
+        if (parts.length === 0) parts.push(`${seconds} sec`);
+        return parts.join(", ");
+      };
+      const renderNeofetch = () => {
+        const output = createElement("div", { className: "cmd-neofetch cmd-output-line" });
+        const logo = createElement("div", { className: "cmd-neofetch__logo", "aria-label": "Windows logo" });
+        const addLogoLine = (indent, leftColor, rightColor, width = 7) => {
+          const line = createElement("span", { className: "cmd-neofetch__logo-line" });
+          line.append(
+            document.createTextNode(" ".repeat(indent)),
+            createElement("span", { className: `cmd-neofetch__quadrant ${leftColor}`, text: "█".repeat(width) }),
+            document.createTextNode("  "),
+            createElement("span", { className: `cmd-neofetch__quadrant ${rightColor}`, text: "█".repeat(width) })
+          );
+          logo.append(line);
+        };
+        addLogoLine(3, "cmd-neofetch__red", "cmd-neofetch__green", 6);
+        addLogoLine(2, "cmd-neofetch__red", "cmd-neofetch__green", 7);
+        addLogoLine(1, "cmd-neofetch__red", "cmd-neofetch__green", 8);
+        addLogoLine(0, "cmd-neofetch__red", "cmd-neofetch__green", 9);
+        logo.append(createElement("span", { className: "cmd-neofetch__logo-line", text: "" }));
+        addLogoLine(0, "cmd-neofetch__blue", "cmd-neofetch__yellow", 9);
+        addLogoLine(1, "cmd-neofetch__blue", "cmd-neofetch__yellow", 8);
+        addLogoLine(2, "cmd-neofetch__blue", "cmd-neofetch__yellow", 7);
+        addLogoLine(3, "cmd-neofetch__blue", "cmd-neofetch__yellow", 6);
+        const info = createElement("div", { className: "cmd-neofetch__info" });
+        const addInfoLine = (label, value, className = "") => {
+          const line = createElement("div", { className });
+          if (label) {
+            line.append(createElement("span", { className: "cmd-neofetch__label", text: `${label}:` }), document.createTextNode(` ${value}`));
+          } else {
+            line.textContent = value;
+          }
+          info.append(line);
+        };
+        addInfoLine("", `${USERNAME.toLocaleLowerCase()}@webos`, "cmd-neofetch__heading");
+        addInfoLine("", "-----------------");
+        addInfoLine("OS", "Windows 7 Web Edition");
+        addInfoLine("Host", HOSTNAME);
+        addInfoLine("Kernel", "6.1.7601");
+        addInfoLine("Uptime", formatUptime());
+        addInfoLine("Shell", "cmd.exe");
+        addInfoLine("Resolution", `${window.innerWidth}x${window.innerHeight}`);
+        addInfoLine("Theme", "Aero Glass");
+        addInfoLine("Icons", "Windows 7 Aero");
+        addInfoLine("Terminal", "cmd.exe");
+        addInfoLine("CPU", "Virtual CPU");
+        addInfoLine("Memory", "768MiB / 2048MiB");
+        output.append(logo, info);
+        scrollback.append(output);
+        scrollToBottom();
+      };
+      const runMatrix = async (session) => {
+        const matrix = createElement("pre", { className: "cmd-matrix cmd-output-line", "aria-label": "Matrix rain animation" });
+        scrollback.append(matrix);
+        const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZｱｲｳｴｵｶｷｸｹｺ";
+        const columns = Math.max(28, Math.min(72, Math.floor(terminal.clientWidth / 8)));
+        const rows = 13;
+        for (let frame = 0; frame < 12 && session === state.session; frame += 1) {
+          const lines = [];
+          for (let row = 0; row < rows; row += 1) {
+            let line = "";
+            for (let column = 0; column < columns; column += 1) {
+              const active = (column * 7 + frame * 3 + row) % 17 < 3;
+              line += active ? alphabet[Math.floor(Math.random() * alphabet.length)] : " ";
+            }
+            lines.push(line);
+          }
+          matrix.textContent = lines.join("\n");
+          scrollToBottom();
+          await wait(65);
+        }
+        if (session === state.session) {
+          matrix.remove();
+          appendLine("Wake up, xDele1ed...", "cmd-konami");
+        }
+      };
+      const formatDirectoryStamp = (date = new Date()) => {
+        const two = (value) => String(value).padStart(2, "0");
+        let hour = date.getHours();
+        const suffix = hour >= 12 ? "PM" : "AM";
+        hour = hour % 12 || 12;
+        return `${two(date.getMonth() + 1)}/${two(date.getDate())}/${date.getFullYear()}  ${two(hour)}:${two(date.getMinutes())} ${suffix}`;
+      };
+      const renderDirectory = (cwd, fileSystem) => {
+        const items = [...fileSystem.list(cwd)].sort((first, second) => {
+          const firstFolder = isDirectory(first);
+          const secondFolder = isDirectory(second);
+          if (firstFolder !== secondFolder) return firstFolder ? -1 : 1;
+          return first.name.localeCompare(second.name, undefined, { sensitivity: "base", numeric: true });
+        });
+        const lines = [
+          " Volume in drive C has no label.",
+          " Volume Serial Number is 7A1C-7601",
+          "",
+          ` Directory of ${windowsPath(cwd)}`,
+          ""
+        ];
+        let fileCount = 0;
+        let byteCount = 0;
+        let directoryCount = 0;
+        if (items.length === 0) lines.push("File Not Found");
+        items.forEach((item) => {
+          const stamp = formatDirectoryStamp(item.meta?.createdAt instanceof Date ? item.meta.createdAt : new Date());
+          if (isDirectory(item)) {
+            directoryCount += 1;
+            lines.push(`${stamp}    <DIR>          ${item.name}`);
+          } else {
+            fileCount += 1;
+            const size = Number(item.file?.size ?? item.meta?.size ?? 0);
+            byteCount += size;
+            lines.push(`${stamp}    ${String(size).padStart(14)} ${item.name}`);
+          }
+        });
+        lines.push(
+          `${String(fileCount).padStart(15)} File(s) ${byteCount.toLocaleString("en-US").padStart(14)} bytes`,
+          `${String(directoryCount).padStart(15)} Dir(s)  2,040,475,648 bytes free`
+        );
+        return lines.join("\n");
+      };
+      const renderTree = (cwd, fileSystem) => {
+        const lines = ["Folder PATH listing", `Volume serial number is 7A1C-7601`, windowsPath(cwd)];
+        const root = fileSystem.resolve(cwd);
+        const children = (root?.children ?? []).filter(isDirectory)
+          .sort((first, second) => first.name.localeCompare(second.name, undefined, { sensitivity: "base", numeric: true }));
+        if (children.length === 0) return `${lines.join("\n")}\nNo subfolders exist.`;
+        const walk = (nodes, prefix, depth) => {
+          nodes.forEach((node, index) => {
+            const last = index === nodes.length - 1;
+            lines.push(`${prefix}${last ? "└──" : "├──"} ${node.name}`);
+            const nested = (node.children ?? []).filter(isDirectory)
+              .sort((first, second) => first.name.localeCompare(second.name, undefined, { sensitivity: "base", numeric: true }));
+            if (nested.length === 0) return;
+            const nextPrefix = `${prefix}${last ? "    " : "│   "}`;
+            if (depth >= 5) lines.push(`${nextPrefix}└── ...`);
+            else walk(nested, nextPrefix, depth + 1);
+          });
+        };
+        walk(children, "", 1);
+        return lines.join("\n");
+      };
+      const register = (name, description, usage, detail, handler, { hidden = false, aliases = [] } = {}) => {
+        const entry = { name: name.toLocaleLowerCase(), description, usage, detail, handler, hidden };
+        commandEntries.push(entry);
+        commands.set(entry.name, entry);
+        aliases.forEach((alias) => commands.set(alias.toLocaleLowerCase(), entry));
+      };
+
+      register("cd", "Displays the name of or changes the current directory.", "CD [drive:][path]", "Type CD without parameters to display the current drive and directory.", (args, cwd) => {
+        if (args.length === 0) return windowsPath(cwd);
+        const nextPath = resolveCommandPath(args.join(" "), cwd);
+        return nextPath ? { cwd: nextPath } : "The system cannot find the path specified.";
+      });
+      register("cls", "Clears the screen.", "CLS", "Clears all text from the Command Prompt window.", () => ({ clear: true }));
+      register("color", "Sets the default console foreground and background colors.", "COLOR [attr]", "ATTR is two hexadecimal digits. The first sets the background; the second sets the foreground.", (args) => {
+        if (args.length === 0) return { color: "07" };
+        const pair = args[0].toLocaleUpperCase();
+        if (!/^[0-9A-F]{2}$/.test(pair) || pair[0] === pair[1]) {
+          return "The color command is not supported by this help utility.";
+        }
+        return { color: pair };
+      });
+      register("date", "Displays the current date.", "DATE", "Displays the date reported by the Windows 7 Web OS clock.", () => {
+        const now = new Date();
+        const two = (value) => String(value).padStart(2, "0");
+        return `The current date is: ${two(now.getMonth() + 1)}/${two(now.getDate())}/${now.getFullYear()}`;
+      });
+      register("dir", "Displays a list of files and subdirectories in a directory.", "DIR", "Displays files and subdirectories in the current directory.", (_args, cwd, fileSystem) => renderDirectory(cwd, fileSystem));
+      register("echo", "Displays messages.", "ECHO [message]", "Displays the supplied message on the next line.", (args) => args.length ? args.join(" ") : "ECHO is on.");
+      register("exit", "Quits the CMD.EXE program.", "EXIT", "Closes the current Command Prompt window.", () => ({ close: true }));
+      register("help", "Provides Help information for Windows commands.", "HELP [command]", "Type HELP command for detailed information about a command.", (args) => {
+        if (args.length > 0) {
+          const entry = commands.get(args[0].toLocaleLowerCase());
+          if (!entry || entry.hidden) return "This command is not supported by the help utility.";
+          return `${entry.usage}\n\n${entry.detail}`;
+        }
+        return commandEntries
+          .filter((entry) => !entry.hidden)
+          .sort((first, second) => first.name.localeCompare(second.name))
+          .map((entry) => `${entry.name.toLocaleUpperCase().padEnd(10)} ${entry.description}`)
+          .join("\n");
+      });
+      register("hostname", "Prints the name of the current host.", "HOSTNAME", "Displays the host name portion of the computer name.", () => HOSTNAME);
+      register("mkdir", "Creates a directory.", "MKDIR [drive:]path", "Creates the specified directory. MD is an alias for MKDIR.", (args, cwd, fileSystem) => {
+        const requestedName = args.join(" ").trim();
+        if (!requestedName || /[<>:"/\\|?*]/.test(requestedName) || [".", ".."].includes(requestedName)) {
+          return "The syntax of the command is incorrect.";
+        }
+        if (fileSystem.list(cwd).some(({ name }) => name.localeCompare(requestedName, undefined, { sensitivity: "base" }) === 0)) {
+          return `A subdirectory or file ${requestedName} already exists.`;
+        }
+        return fileSystem.create(cwd, "folder", requestedName)
+          ? ""
+          : "The system cannot find the path specified.";
+      }, { aliases: ["md"] });
+      register("time", "Displays the current time.", "TIME", "Displays the time reported by the Windows 7 Web OS clock.", () => {
+        const now = new Date();
+        const two = (value) => String(value).padStart(2, "0");
+        const hundredths = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, "0");
+        return `The current time is: ${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}.${hundredths}`;
+      });
+      register("title", "Sets the window title for the CMD.EXE session.", "TITLE [string]", "Sets the title shown in the Command Prompt title bar and taskbar button.", (args) => ({ title: args.join(" ") }));
+      register("tree", "Graphically displays the folder structure of a drive or path.", "TREE", "Displays the current directory tree to a maximum depth of five levels.", (_args, cwd, fileSystem) => renderTree(cwd, fileSystem));
+      register("ver", "Displays the Windows version.", "VER", "Displays the Windows version number.", () => CMD_VERSION);
+      register("whoami", "Displays user, group, and privileges information.", "WHOAMI", "Displays the current domain and user name.", () => `${HOSTNAME.toLocaleLowerCase()}\\${USERNAME.toLocaleLowerCase()}`);
+      register("neofetch", "", "NEOFETCH", "", () => ({ rich: "neofetch" }), { hidden: true });
+      register("matrix", "", "MATRIX", "", () => ({ animation: "matrix" }), { hidden: true });
+      register("konami", "", "KONAMI", "", () => ({ text: "↑ ↑ ↓ ↓ ← → ← → B A  —  Achievement unlocked: Still got it.", className: "cmd-konami" }), { hidden: true });
+      register("sudo", "", "SUDO", "", () => "'sudo' is not recognized as a Windows command. This isn't Linux.", { hidden: true });
+      register("starwars", "", "STARWARS", "", () => "A long time ago, on a Telnet server far, far away...\nNo network connection. The Force will have to do.", { hidden: true });
+
+      const applyResult = async (result, session) => {
+        if (result === undefined || result === null || result === "") return true;
+        if (typeof result === "string") {
+          writeText(result);
+          return true;
+        }
+        if (result.clear) scrollback.replaceChildren();
+        if (result.cwd) state.cwd = result.cwd;
+        if (Object.hasOwn(result, "title")) setTitle(result.title);
+        if (result.color) setColor(result.color);
+        if (result.rich === "neofetch") renderNeofetch();
+        if (Object.hasOwn(result, "text")) appendLine(result.text, result.className);
+        if (result.animation === "matrix") await runMatrix(session);
+        if (result.close) {
+          this.#closeWindow(cmdWindow);
+          return false;
+        }
+        return session === state.session;
+      };
+      const finishCommand = () => {
+        state.running = false;
+        cmdWindow.classList.remove("is-command-running");
+        currentLine.hidden = false;
+        input.disabled = false;
+        input.value = "";
+        updatePrompt();
+        scrollToBottom(true);
+        requestAnimationFrame(focusInput);
+      };
+      const submit = async () => {
+        if (state.running) return;
+        const raw = input.value.replace(/[\r\n]+/g, " ");
+        state.allowAutoScroll = true;
+        appendLine(`${promptText()}${raw}`);
+        input.value = "";
+        currentLine.hidden = true;
+        scrollToBottom(true);
+
+        const trimmed = raw.trim();
+        if (!trimmed) {
+          finishCommand();
+          return;
+        }
+        state.history.push(raw);
+        state.historyIndex = state.history.length;
+        state.historyDraft = "";
+        const parts = trimmed.split(/\s+/);
+        const commandName = parts.shift();
+        const entry = commands.get(commandName.toLocaleLowerCase());
+        if (!entry) {
+          writeText(`'${commandName}' is not recognized as an internal or external command,\noperable program or batch file.`);
+          finishCommand();
+          return;
+        }
+
+        state.running = true;
+        cmdWindow.classList.add("is-command-running");
+        input.disabled = true;
+        const session = state.session;
+        try {
+          const result = await entry.handler(parts, state.cwd, this.#fileSystem);
+          const shouldContinue = await applyResult(result, session);
+          if (shouldContinue && session === state.session) finishCommand();
+        } catch (error) {
+          console.error(`Command Prompt command failed: ${commandName}`, error);
+          if (session === state.session) {
+            appendLine("The command could not be completed.");
+            finishCommand();
+          }
+        }
+      };
+      const interrupt = () => {
+        state.session += 1;
+        state.running = false;
+        cmdWindow.classList.remove("is-command-running");
+        currentLine.hidden = false;
+        input.disabled = false;
+        appendLine(`${promptText()}${input.value}^C`);
+        input.value = "";
+        state.historyIndex = state.history.length;
+        state.historyDraft = "";
+        state.allowAutoScroll = true;
+        updatePrompt();
+        scrollToBottom(true);
+        requestAnimationFrame(focusInput);
+      };
+      const recallHistory = (direction) => {
+        if (state.history.length === 0) return;
+        if (state.historyIndex === state.history.length) state.historyDraft = input.value;
+        state.historyIndex = Math.min(state.history.length, Math.max(0, state.historyIndex + direction));
+        input.value = state.historyIndex === state.history.length ? state.historyDraft : state.history[state.historyIndex];
+        input.setSelectionRange(input.value.length, input.value.length);
+        restartCursorBlink();
+      };
+      const resetSession = () => {
+        state.session += 1;
+        state.cwd = this.#fileSystem.resolve(homePath) ? homePath : drivePath;
+        state.history.length = 0;
+        state.historyIndex = 0;
+        state.historyDraft = "";
+        state.running = false;
+        state.allowAutoScroll = true;
+        cmdWindow.classList.remove("is-command-running");
+        currentLine.hidden = false;
+        input.disabled = false;
+        input.value = "";
+        scrollback.replaceChildren();
+        setTitle(CMD_DEFAULT_TITLE);
+        setColor("07");
+        appendLine(CMD_VERSION);
+        appendLine("Copyright (c) 2009 Microsoft Corporation.  All rights reserved.");
+        appendLine();
+        updatePrompt();
+        scrollToBottom(true);
+      };
+
+      input.addEventListener("keydown", (event) => {
+        if (event.ctrlKey && event.key.toLocaleLowerCase() === "c") {
+          event.preventDefault();
+          interrupt();
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          void submit();
+          return;
+        }
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          recallHistory(-1);
+          return;
+        }
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          recallHistory(1);
+          return;
+        }
+        requestAnimationFrame(restartCursorBlink);
+      }, { signal: this.#listeners.signal });
+      input.addEventListener("input", () => {
+        if (/[\r\n]/.test(input.value)) input.value = input.value.replace(/[\r\n]+/g, " ");
+        state.historyIndex = state.history.length;
+        restartCursorBlink();
+      }, { signal: this.#listeners.signal });
+      input.addEventListener("click", restartCursorBlink, { signal: this.#listeners.signal });
+      input.addEventListener("select", updateCursor, { signal: this.#listeners.signal });
+      input.addEventListener("scroll", updateCursor, { signal: this.#listeners.signal });
+      document.addEventListener("selectionchange", () => {
+        if (document.activeElement === input) updateCursor();
+      }, { signal: this.#listeners.signal });
+      terminal.addEventListener("scroll", () => {
+        state.allowAutoScroll = terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 4;
+      }, { signal: this.#listeners.signal });
+      terminal.addEventListener("pointerdown", (event) => {
+        if (event.target === terminal || event.target.closest("[data-cmd-current-line]")) requestAnimationFrame(focusInput);
+      }, { signal: this.#listeners.signal });
+      cmdWindow.addEventListener("cmd:reset", () => {
+        resetSession();
+        requestAnimationFrame(focusInput);
+      }, { signal: this.#listeners.signal });
+      cmdWindow.addEventListener("cmd:close", () => {
+        state.session += 1;
+        state.running = false;
+      }, { signal: this.#listeners.signal });
+
+      resetSession();
     }
 
     #configureDesktopItems() {
@@ -383,18 +1677,11 @@
       });
       this.#desktop.append(this.#desktopIconLayer, this.#desktopFileInput);
 
-      this.#desktopItems = [{
-        id: "recycle-bin",
-        type: "recycle",
-        name: "Recycle Bin",
-        x: 10,
-        y: 10,
-        parentId: null,
-        children: [],
-        permanent: true,
-        isSelected: false,
-        isDropTarget: false
-      }];
+      this.#fileSystemUnsubscribe?.();
+      this.#fileSystemUnsubscribe = this.#fileSystem.subscribe(() => {
+        this.#renderDesktopItems();
+        this.#renderAllExplorerWindows();
+      });
       this.#renderDesktopItems();
       this.#desktopMarquee = new DesktopSelectionMarquee(
         this.#desktopIconLayer,
@@ -410,13 +1697,23 @@
         if (!icon || !event.isPrimary || event.button !== 0) return;
 
         const itemId = icon.dataset.desktopItemId;
-        const item = this.#desktopItems.find(({ id }) => id === itemId);
+        const item = this.#fileSystem.desktopItems.find(({ id }) => id === itemId);
         if (!item) return;
-        if (event.shiftKey) {
+        const clickTime = performance.now();
+        const isDoubleClick = this.#lastDesktopClick.itemId === itemId && clickTime - this.#lastDesktopClick.time < 500;
+        this.#lastDesktopClick = { itemId, time: clickTime };
+        if (isDoubleClick) {
+          this.#lastDesktopClick = { itemId: null, time: 0 };
+          this.#cancelDesktopItemDrag();
+          this.#openDesktopItem(itemId);
+          event.preventDefault();
+          return;
+        }
+        if (event.ctrlKey || event.metaKey) {
           item.isSelected = !item.isSelected;
           this.#selectedDesktopItemId = item.isSelected
             ? item.id
-            : this.#desktopItems.find(({ isSelected }) => isSelected)?.id ?? null;
+            : this.#fileSystem.desktopItems.find(({ isSelected }) => isSelected)?.id ?? null;
           this.#syncDesktopSelectionStyles();
           if (!item.isSelected) return;
         } else if (!item.isSelected) {
@@ -443,7 +1740,7 @@
         event.preventDefault();
         const icon = event.target.closest("[data-desktop-item-id]");
         const itemId = icon?.dataset.desktopItemId ?? null;
-        const item = this.#desktopItems.find(({ id }) => id === itemId);
+        const item = this.#fileSystem.desktopItems.find(({ id }) => id === itemId);
         if (itemId && !item?.isSelected) this.#selectDesktopItem(itemId);
         else if (itemId) this.#selectedDesktopItemId = itemId;
         else this.#selectDesktopItem(null);
@@ -468,11 +1765,16 @@
       }, { capture: true, signal: this.#listeners.signal });
       document.addEventListener("keydown", (event) => {
         const editingText = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
-        const selectedDeletableItems = this.#desktopItems.filter(({ isSelected, permanent, parentId }) =>
+        const desktopHasFocus = !event.target.closest?.(".window, [data-taskbar], [data-start-menu]");
+        const selectedDeletableItems = this.#fileSystem.desktopItems.filter(({ isSelected, permanent, parentId }) =>
           isSelected && !permanent && parentId === null);
-        if (event.key === "Delete" && !editingText && selectedDeletableItems.length > 0) {
+        if (event.key === "Delete" && !editingText && desktopHasFocus && selectedDeletableItems.length > 0) {
           event.preventDefault();
           this.#deleteDesktopItems(selectedDeletableItems.map(({ id }) => id));
+        }
+        if (event.key === "F2" && !editingText && desktopHasFocus && this.#selectedDesktopItemId) {
+          event.preventDefault();
+          this.#beginDesktopRename(this.#selectedDesktopItemId);
         }
         if (event.key === "Escape") this.#closeDesktopContextMenu();
       }, { signal: this.#listeners.signal });
@@ -506,7 +1808,7 @@
       if (this.#desktopAutoArrange) this.#arrangeDesktopItems();
 
       const fragment = document.createDocumentFragment();
-      this.#desktopItems
+      this.#fileSystem.desktopItems
         .filter(({ parentId }) => parentId === null)
         .forEach((item) => fragment.append(this.#createDesktopIcon(item)));
       this.#desktopIconLayer.querySelectorAll("[data-desktop-item-id]").forEach((icon) => icon.remove());
@@ -581,8 +1883,11 @@
 
     #desktopItemIcon(item) {
       if (item.type === "recycle") {
-        return this.#recycleBinState.length > 0 ? ASSETS.recycleFull : ASSETS.recycleEmpty;
+        return this.#fileSystem.recycleItems.length > 0 ? ASSETS.recycleFull : ASSETS.recycleEmpty;
       }
+      if (item.type === "computer") return ASSETS.computer;
+      if (item.type === "drive") return ASSETS.systemDrive;
+      if (item.type === "dvd") return ASSETS.dvdDrive;
       if (item.type === "folder") {
         return item.children.length > 0 ? ASSETS.folderFull : ASSETS.folderEmpty;
       }
@@ -590,7 +1895,7 @@
     }
 
     #selectDesktopItem(itemId) {
-      this.#desktopItems.forEach((item) => {
+      this.#fileSystem.desktopItems.forEach((item) => {
         item.isSelected = item.id === itemId;
       });
       this.#selectedDesktopItemId = itemId;
@@ -598,7 +1903,7 @@
     }
 
     #clearDesktopSelection() {
-      this.#desktopItems.forEach((item) => {
+      this.#fileSystem.desktopItems.forEach((item) => {
         item.isSelected = false;
       });
       this.#selectedDesktopItemId = null;
@@ -607,7 +1912,7 @@
 
     #syncDesktopSelectionStyles() {
       this.#desktopIconLayer?.querySelectorAll("[data-desktop-item-id]").forEach((icon) => {
-        const item = this.#desktopItems.find(({ id }) => id === icon.dataset.desktopItemId);
+        const item = this.#fileSystem.desktopItems.find(({ id }) => id === icon.dataset.desktopItemId);
         const selected = Boolean(item?.isSelected);
         icon.setAttribute("aria-selected", String(selected));
         icon.classList.toggle("is-selected", Boolean(selected || item?.isDropTarget));
@@ -623,7 +1928,7 @@
       );
       let firstSelectedId = null;
 
-      this.#desktopItems.forEach((item) => {
+      this.#fileSystem.desktopItems.forEach((item) => {
         if (item.parentId !== null) return;
         const element = elementById.get(item.id);
         if (!element) return;
@@ -640,7 +1945,7 @@
 
     #beginDesktopItemDrag(event, element, itemId) {
       const layerRect = this.#desktopIconLayer.getBoundingClientRect();
-      const selectedItems = this.#desktopItems.filter(({ isSelected, parentId }) =>
+      const selectedItems = this.#fileSystem.desktopItems.filter(({ isSelected, parentId }) =>
         isSelected && parentId === null);
       const entries = selectedItems.map((item) => {
         const itemElement = this.#desktopIconLayer.querySelector(
@@ -663,7 +1968,7 @@
       const groupMaxRight = Math.max(...entries.map(({ initialX, rect }) => initialX + rect.width));
       const groupMaxBottom = Math.max(...entries.map(({ initialY, rect }) => initialY + rect.height));
       const hasDroppableItems = entries.some(({ item }) => !item.permanent);
-      const dropTargets = hasDroppableItems ? this.#desktopItems
+      const dropTargets = hasDroppableItems ? this.#fileSystem.desktopItems
         .filter((candidate) => candidate.parentId === null &&
           !selectedIds.has(candidate.id) &&
           (candidate.type === "folder" || candidate.type === "recycle"))
@@ -726,7 +2031,7 @@
 
       cancelAnimationFrame(this.#desktopItemDragFrame);
       this.#desktopItemDragFrame = 0;
-      const dropTarget = this.#desktopItems.find(({ id }) => id === drag.hoverTargetId);
+      const dropTarget = this.#fileSystem.desktopItems.find(({ id }) => id === drag.hoverTargetId);
 
       drag.entries.forEach(({ element: itemElement }) => {
         itemElement.style.transform = "none";
@@ -818,7 +2123,7 @@
     }
 
     #setDesktopDropTarget(itemId) {
-      this.#desktopItems.forEach((item) => {
+      this.#fileSystem.desktopItems.forEach((item) => {
         item.isDropTarget = item.id === itemId;
       });
       this.#syncDesktopSelectionStyles();
@@ -832,17 +2137,8 @@
     }
 
     #moveDesktopItemsIntoFolder(items, folder) {
-      items.filter(({ permanent }) => !permanent).forEach((item) => {
-        if (item.parentId) {
-          const oldParent = this.#desktopItems.find(({ id }) => id === item.parentId);
-          if (oldParent) oldParent.children = oldParent.children.filter((child) => child.id !== item.id);
-        }
-        item.parentId = folder.id;
-        item.isSelected = false;
-        item.isDropTarget = false;
-        if (!folder.children.some((child) => child.id === item.id)) folder.children.push(item);
-      });
-      this.#desktopItems.forEach((item) => {
+      this.#fileSystem.move(items, this.#fileSystem.pathFor(folder));
+      this.#fileSystem.desktopItems.forEach((item) => {
         item.isSelected = false;
         item.isDropTarget = false;
       });
@@ -851,26 +2147,14 @@
     }
 
     #addDesktopItem(type, requestedName, file = null, preferredPoint = null, beginRename = true) {
-      const name = this.#uniqueDesktopName(requestedName, type);
       const point = this.#findAvailableDesktopPoint(preferredPoint ?? this.#contextMenuPoint);
-      this.#desktopItems.forEach((existingItem) => {
+      this.#fileSystem.desktopItems.forEach((existingItem) => {
         existingItem.isSelected = false;
         existingItem.isDropTarget = false;
       });
-      const item = {
-        id: `desktop-item-${++this.#desktopItemSequence}`,
-        type,
-        name,
-        x: point.x,
-        y: point.y,
-        parentId: null,
-        children: [],
-        permanent: false,
-        isSelected: true,
-        isDropTarget: false,
-        file
-      };
-      this.#desktopItems.push(item);
+      const item = this.#fileSystem.create("/Desktop", type, requestedName, { file, ...point });
+      if (!item) return null;
+      item.isSelected = true;
       this.#selectedDesktopItemId = item.id;
       this.#renderDesktopItems();
       if (beginRename) requestAnimationFrame(() => this.#beginDesktopRename(item.id));
@@ -878,21 +2162,7 @@
     }
 
     #uniqueDesktopName(requestedName, type, excludedId = null) {
-      const names = new Set(this.#desktopItems
-        .filter(({ id, parentId }) => id !== excludedId && parentId === null)
-        .map(({ name }) => name.toLocaleLowerCase()));
-      if (!names.has(requestedName.toLocaleLowerCase())) return requestedName;
-
-      const dotIndex = type !== "folder" ? requestedName.lastIndexOf(".") : -1;
-      const base = dotIndex > 0 ? requestedName.slice(0, dotIndex) : requestedName;
-      const extension = dotIndex > 0 ? requestedName.slice(dotIndex) : "";
-      let index = 2;
-      let candidate = `${base} (${index})${extension}`;
-      while (names.has(candidate.toLocaleLowerCase())) {
-        index += 1;
-        candidate = `${base} (${index})${extension}`;
-      }
-      return candidate;
+      return this.#fileSystem.uniqueName("/Desktop", requestedName, type, excludedId);
     }
 
     #findAvailableDesktopPoint(preferredPoint, excludedId = null) {
@@ -910,7 +2180,7 @@
         : preferredPoint;
       let x = Math.min(maxX, Math.max(0, initial.x));
       let y = Math.min(maxY, Math.max(0, initial.y));
-      const visibleItems = this.#desktopItems.filter(({ id, parentId }) =>
+      const visibleItems = this.#fileSystem.desktopItems.filter(({ id, parentId }) =>
         parentId === null && id !== excludedId);
 
       for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -941,7 +2211,7 @@
     }
 
     #beginDesktopRename(itemId) {
-      const item = this.#desktopItems.find(({ id }) => id === itemId);
+      const item = this.#fileSystem.desktopItems.find(({ id }) => id === itemId);
       const icon = this.#desktopIconLayer?.querySelector(`[data-desktop-item-id="${CSS.escape(itemId)}"]`);
       const label = icon?.querySelector("[data-desktop-item-label]");
       if (!item || !icon || !label || item.permanent) return;
@@ -965,7 +2235,7 @@
       let cancelled = false;
       const finish = () => {
         const requested = cancelled ? originalName : input.value.trim() || originalName;
-        item.name = this.#uniqueDesktopName(requested, item.type, item.id);
+        if (!cancelled) this.#fileSystem.rename(item, requested);
         this.#renderDesktopItems();
         this.#selectDesktopItem(item.id);
       };
@@ -995,7 +2265,7 @@
       const metrics = this.#desktopIconMetrics();
       const availableHeight = this.#desktopIconLayer?.clientHeight ?? window.innerHeight - TASKBAR_HEIGHT;
       const rows = Math.max(1, Math.floor((availableHeight - 12) / metrics.height));
-      this.#desktopItems
+      this.#fileSystem.desktopItems
         .filter(({ parentId }) => parentId === null)
         .forEach((item, index) => {
           item.x = 10 + Math.floor(index / rows) * metrics.width;
@@ -1012,7 +2282,7 @@
       const metrics = this.#desktopIconMetrics();
       const maxX = Math.max(0, this.#desktopIconLayer.clientWidth - metrics.width);
       const maxY = Math.max(0, this.#desktopIconLayer.clientHeight - metrics.height);
-      this.#desktopItems.filter(({ parentId }) => parentId === null).forEach((item) => {
+      this.#fileSystem.desktopItems.filter(({ parentId }) => parentId === null).forEach((item) => {
         const constrained = this.#desktopAlignToGrid
           ? this.#findAvailableDesktopPoint({ x: item.x, y: item.y }, item.id)
           : {
@@ -1064,7 +2334,7 @@
         { label: "Refresh", action: () => this.#refreshDesktopIcons() },
         { separator: true },
         { label: "Copy", disabled: !this.#selectedDesktopItemId, action: () => this.#copyDesktopItem(this.#selectedDesktopItemId) },
-        { label: "Paste", disabled: !this.#desktopClipboard, action: () => this.#pasteDesktopItem() },
+        { label: "Paste", disabled: !this.#shellClipboard, action: () => this.#pasteDesktopItem() },
         { label: "Paste shortcut", disabled: true },
         { separator: true },
         { label: "Upload files here", action: () => this.#desktopFileInput?.click() },
@@ -1073,34 +2343,41 @@
           { label: "Text Document", icon: ASSETS.textFile, action: () => this.#addDesktopItem("text", "New Text Document.txt") }
         ] },
         { separator: true },
-        { label: "Screen Resolution / Display", icon: ASSETS.contextDisplay, action: () => this.#emitDesktopPlaceholder("display") },
+        { label: "Screen Resolution / Display", icon: ASSETS.contextDisplay, action: () => this.#openAppWindow("display") },
         { label: "Gadgets", icon: ASSETS.contextGadgets, action: () => this.#emitDesktopPlaceholder("gadgets") },
         { label: "Personalize", icon: ASSETS.contextPersonalize, action: () => this.#emitDesktopPlaceholder("personalize") }
       ];
     }
 
     #desktopItemMenu(itemId) {
-      const item = this.#desktopItems.find(({ id }) => id === itemId);
+      const item = this.#fileSystem.desktopItems.find(({ id }) => id === itemId);
       if (!item) return [];
       if (item.type === "recycle") {
         return [
-          { label: "Open", action: () => this.#emitDesktopPlaceholder("open-recycle-bin") },
-          { label: "Empty Recycle Bin", disabled: this.#recycleBinState.length === 0, action: () => {
-            this.#recycleBinState = [];
-            this.#renderDesktopItems();
+          { label: "Open", action: () => this.#openDesktopItem(item.id) },
+          { label: "Empty Recycle Bin", disabled: this.#fileSystem.recycleItems.length === 0, action: () => {
+            this.#fileSystem.emptyRecycleBin();
           } },
           { separator: true },
-          { label: "Properties", action: () => this.#emitDesktopPlaceholder("recycle-properties") }
+          { label: "Properties", action: () => this.#showShellItemProperties(item) }
+        ];
+      }
+      if (item.type === "computer") {
+        return [
+          { label: "Open", action: () => this.#openDesktopItem(item.id) },
+          { separator: true },
+          { label: "Properties", action: () => this.#showShellItemProperties(item) }
         ];
       }
       return [
-        { label: "Open", action: () => this.#emitDesktopPlaceholder(`open-${item.type}`) },
+        { label: "Open", action: () => this.#openDesktopItem(item.id) },
         { separator: true },
-        { label: "Copy", action: () => this.#copyDesktopItem(item.id) },
+        { label: "Cut", action: () => this.#copyDesktopItem(item.id, "cut") },
+        { label: "Copy", action: () => this.#copyDesktopItem(item.id, "copy") },
         { label: "Delete", action: () => this.#deleteDesktopItem(item.id) },
         { label: "Rename", action: () => requestAnimationFrame(() => this.#beginDesktopRename(item.id)) },
         { separator: true },
-        { label: "Properties", action: () => this.#emitDesktopPlaceholder(`${item.type}-properties`) }
+        { label: "Properties", action: () => this.#showShellItemProperties(item) }
       ];
     }
 
@@ -1246,7 +2523,7 @@
     }
 
     #sortDesktopItems(property) {
-      this.#desktopItems.sort((a, b) => {
+      this.#fileSystem.desktopItems.sort((a, b) => {
         if (a.permanent !== b.permanent) return a.permanent ? -1 : 1;
         return String(a[property]).localeCompare(String(b[property]), undefined, { sensitivity: "base" });
       });
@@ -1272,25 +2549,30 @@
       }, 70);
     }
 
-    #copyDesktopItem(itemId) {
-      const item = this.#desktopItems.find(({ id }) => id === itemId);
+    #copyDesktopItem(itemId, operation = "copy") {
+      const item = this.#fileSystem.desktopItems.find(({ id }) => id === itemId);
       if (!item || item.permanent) return;
-      this.#desktopClipboard = {
-        type: item.type,
-        name: item.name,
-        file: item.file ?? null
-      };
+      this.#shellClipboard = { operation, nodes: [item] };
     }
 
     #pasteDesktopItem() {
-      if (!this.#desktopClipboard) return;
-      this.#addDesktopItem(
-        this.#desktopClipboard.type,
-        this.#desktopClipboard.name,
-        this.#desktopClipboard.file,
-        this.#contextMenuPoint,
-        false
-      );
+      if (!this.#shellClipboard) return;
+      const { operation, nodes } = this.#shellClipboard;
+      if (operation === "cut") {
+        this.#fileSystem.move(nodes, "/Desktop");
+        this.#shellClipboard = null;
+      } else {
+        const copies = this.#fileSystem.copy(nodes, "/Desktop");
+        copies.forEach((item, index) => {
+          const point = this.#findAvailableDesktopPoint({
+            x: this.#contextMenuPoint.x + index * 18,
+            y: this.#contextMenuPoint.y + index * 18
+          });
+          item.x = point.x;
+          item.y = point.y;
+        });
+      }
+      this.#renderDesktopItems();
     }
 
     #deleteDesktopItem(itemId) {
@@ -1299,33 +2581,11 @@
 
     #deleteDesktopItems(itemIds) {
       const requestedIds = new Set(itemIds);
-      const rootItems = this.#desktopItems.filter(({ id, permanent }) =>
+      const items = this.#fileSystem.desktopItems.filter(({ id, permanent }) =>
         requestedIds.has(id) && !permanent);
-      if (rootItems.length === 0) return;
-
-      const deletedIds = new Set(rootItems.map(({ id }) => id));
-      let foundDescendant = true;
-      while (foundDescendant) {
-        foundDescendant = false;
-        this.#desktopItems.forEach((candidate) => {
-          if (candidate.parentId && deletedIds.has(candidate.parentId) && !deletedIds.has(candidate.id)) {
-            deletedIds.add(candidate.id);
-            foundDescendant = true;
-          }
-        });
-      }
-      rootItems.forEach((item) => {
-        item.deletedAt = new Date();
-        item.isSelected = false;
-        item.isDropTarget = false;
-        this.#recycleBinState.push(item);
-        if (item.parentId) {
-          const parent = this.#desktopItems.find(({ id }) => id === item.parentId);
-          if (parent) parent.children = parent.children.filter((child) => child.id !== item.id);
-        }
-      });
-      this.#desktopItems = this.#desktopItems.filter(({ id }) => !deletedIds.has(id));
-      this.#desktopItems.forEach((item) => {
+      if (items.length === 0) return;
+      this.#fileSystem.trash(items);
+      this.#fileSystem.desktopItems.forEach((item) => {
         item.isSelected = false;
         item.isDropTarget = false;
       });
@@ -1337,6 +2597,592 @@
       this.#desktop.dispatchEvent(new CustomEvent("windows7:desktopaction", {
         detail: { action }
       }));
+    }
+
+    #openDesktopItem(itemId) {
+      const item = this.#fileSystem.desktopItems.find(({ id }) => id === itemId);
+      if (!item) return;
+      if (item.type === "computer" || item.type === "recycle") {
+        this.#openExplorer(item.targetPath);
+        return;
+      }
+      if (item.type === "folder") {
+        this.#openExplorer(this.#fileSystem.pathFor(item));
+        return;
+      }
+      this.#showShellItemProperties(item);
+    }
+
+    #openExplorer(startPath = "/Quick Access") {
+      const template = this.#desktop.querySelector("[data-explorer-template]");
+      const windowElement = template?.content.firstElementChild?.cloneNode(true);
+      if (!windowElement || !this.#fileSystem.resolve(startPath)) return null;
+
+      const id = `explorer-window-${++this.#explorerSequence}`;
+      windowElement.id = id;
+      const controller = new AbortController();
+      const state = {
+        id,
+        element: windowElement,
+        controller,
+        path: startPath,
+        currentNode: this.#fileSystem.resolve(startPath),
+        back: [],
+        forward: [],
+        search: "",
+        sort: "name",
+        selectedIds: new Set(),
+        marquee: null,
+        selectionState: { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, bounds: null }
+      };
+
+      this.#desktop.append(windowElement);
+      this.#initializeExplorerWindowElement(windowElement);
+      this.#explorerWindows.set(id, state);
+      this.#bindExplorerWindow(state);
+      this.#renderExplorerWindow(state);
+      this.#ensureTaskButton(windowElement);
+      this.#raiseWindow(windowElement);
+      windowElement.focus({ preventScroll: true });
+      this.#playNavigationStart();
+      return state;
+    }
+
+    #initializeExplorerWindowElement(windowElement) {
+      const desktopWidth = this.#desktop.clientWidth || window.innerWidth;
+      const desktopHeight = this.#desktop.clientHeight || window.innerHeight;
+      const width = Math.min(900, Math.max(560, desktopWidth - 84));
+      const height = Math.min(610, Math.max(370, desktopHeight - TASKBAR_HEIGHT - 70));
+      const cascade = ((this.#explorerSequence - 1) % 8) * 22;
+      assignStyles(windowElement, {
+        position: "absolute",
+        zIndex: "100",
+        left: `${Math.max(0, (desktopWidth - width) / 2 + cascade)}px`,
+        top: `${Math.max(0, (desktopHeight - TASKBAR_HEIGHT - height) / 2 + cascade)}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+        minWidth: `${Math.min(540, desktopWidth)}px`,
+        minHeight: `${Math.min(340, Math.max(1, desktopHeight - TASKBAR_HEIGHT))}px`,
+        maxWidth: "100%",
+        display: "flex",
+        flexDirection: "column",
+        boxSizing: "border-box",
+        willChange: "transform"
+      });
+      const body = windowElement.querySelector(".window-body");
+      if (body) assignStyles(body, { flex: "1", overflow: "hidden" });
+      const titleBar = windowElement.querySelector(".title-bar");
+      if (titleBar) assignStyles(titleBar, {
+        flex: "0 0 auto",
+        touchAction: "none",
+        cursor: `url("${ASSETS.cursorMove}") 24 24, move`
+      });
+      windowElement.querySelectorAll("button").forEach((button) => {
+        button.style.cursor = `url("${ASSETS.cursorLink}") 6 2, pointer`;
+      });
+      this.#configureResizeHandles(windowElement);
+    }
+
+    #bindExplorerWindow(state) {
+      const { element, controller } = state;
+      const signal = controller.signal;
+      const content = element.querySelector("[data-explorer-content]");
+
+      element.querySelector("[data-explorer-back]")?.addEventListener("click", () => {
+        const path = state.back.pop();
+        if (!path) return;
+        state.forward.push(state.path);
+        this.#navigateExplorer(state, path, { recordHistory: false });
+      }, { signal });
+      element.querySelector("[data-explorer-forward]")?.addEventListener("click", () => {
+        const path = state.forward.pop();
+        if (!path) return;
+        state.back.push(state.path);
+        this.#navigateExplorer(state, path, { recordHistory: false });
+      }, { signal });
+      element.querySelector("[data-explorer-up]")?.addEventListener("click", () => {
+        const parentPath = this.#explorerParentPath(state.path);
+        if (parentPath) this.#navigateExplorer(state, parentPath);
+      }, { signal });
+      element.querySelector("[data-explorer-refresh]")?.addEventListener("click", () => {
+        content?.classList.add("is-refreshing");
+        this.#renderExplorerWindow(state);
+        requestAnimationFrame(() => content?.classList.remove("is-refreshing"));
+      }, { signal });
+      element.querySelector("[data-explorer-search]")?.addEventListener("input", (event) => {
+        state.search = event.currentTarget.value;
+        state.selectedIds.clear();
+        this.#renderExplorerWindow(state);
+      }, { signal });
+      element.querySelectorAll("[data-explorer-place]").forEach((button) => {
+        button.addEventListener("click", () => this.#navigateExplorer(state, button.dataset.explorerPlace), { signal });
+      });
+      element.querySelector("[data-explorer-dvd]")?.addEventListener("click", () => {
+        this.#playCriticalStop();
+        this.#showExplorerMessage(state, "DVD Drive", "Not accessible.", ASSETS.accessDenied);
+      }, { signal });
+      element.querySelector("[data-explorer-breadcrumb]")?.addEventListener("click", (event) => {
+        const crumb = event.target.closest("[data-explorer-crumb]");
+        if (crumb) this.#navigateExplorer(state, crumb.dataset.explorerCrumb);
+      }, { signal });
+
+      content?.addEventListener("click", (event) => {
+        const itemElement = event.target.closest("[data-explorer-item-id]");
+        if (!itemElement) {
+          state.selectedIds.clear();
+          this.#syncExplorerSelection(state);
+          return;
+        }
+        const itemId = itemElement.dataset.explorerItemId;
+        if (event.ctrlKey || event.metaKey) {
+          if (state.selectedIds.has(itemId)) state.selectedIds.delete(itemId);
+          else state.selectedIds.add(itemId);
+        } else {
+          state.selectedIds.clear();
+          state.selectedIds.add(itemId);
+        }
+        this.#syncExplorerSelection(state);
+      }, { signal });
+      content?.addEventListener("dblclick", (event) => {
+        const itemElement = event.target.closest("[data-explorer-item-id]");
+        if (!itemElement) return;
+        event.preventDefault();
+        this.#openExplorerItem(state, itemElement.dataset.explorerItemId);
+      }, { signal });
+      content?.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        const itemElement = event.target.closest("[data-explorer-item-id]");
+        if (itemElement && !state.selectedIds.has(itemElement.dataset.explorerItemId)) {
+          state.selectedIds.clear();
+          state.selectedIds.add(itemElement.dataset.explorerItemId);
+          this.#syncExplorerSelection(state);
+        } else if (!itemElement) {
+          state.selectedIds.clear();
+          this.#syncExplorerSelection(state);
+        }
+        this.#openExplorerContextMenu(state, event.clientX, event.clientY, itemElement?.dataset.explorerItemId ?? null);
+      }, { signal });
+      content?.addEventListener("keydown", (event) => {
+        if (event.target instanceof HTMLInputElement) return;
+        if (event.key === "F2" && state.selectedIds.size === 1) {
+          event.preventDefault();
+          this.#beginExplorerRename(state, [...state.selectedIds][0]);
+        }
+        if (event.key === "Delete" && state.selectedIds.size > 0) {
+          event.preventDefault();
+          this.#deleteExplorerSelection(state);
+        }
+        if (event.key === "Enter" && state.selectedIds.size === 1) {
+          event.preventDefault();
+          this.#openExplorerItem(state, [...state.selectedIds][0]);
+        }
+      }, { signal });
+    }
+
+    #navigateExplorer(state, path, { recordHistory = true, sound = true } = {}) {
+      const node = this.#fileSystem.resolve(path);
+      if (!node || path === state.path) return false;
+      if (node.type === "dvd" || node.meta.systemFolder) {
+        this.#playCriticalStop();
+        this.#showExplorerMessage(state, node.name, "Not accessible.", ASSETS.accessDenied);
+        return false;
+      }
+      if (recordHistory) {
+        state.back.push(state.path);
+        state.forward.length = 0;
+      }
+      state.path = path;
+      state.currentNode = node;
+      state.search = "";
+      state.selectedIds.clear();
+      const search = state.element.querySelector("[data-explorer-search]");
+      if (search) search.value = "";
+      this.#renderExplorerWindow(state);
+      if (sound) this.#playNavigationStart();
+      return true;
+    }
+
+    #explorerParentPath(path) {
+      if (["/Quick Access", "/Desktop", "/Documents", "/Downloads", "/Music", "/Pictures", "/Videos", "/Computer", "/Recycle Bin", "/Computer/Local Disk (C:)"].includes(path)) return null;
+      const node = this.#fileSystem.resolve(path);
+      return node?.parentPath ?? null;
+    }
+
+    #renderAllExplorerWindows() {
+      this.#explorerWindows.forEach((state) => {
+        if (state.currentNode && state.currentNode.type !== "virtual") {
+          state.path = this.#fileSystem.pathFor(state.currentNode);
+        }
+        if (!this.#fileSystem.resolve(state.path)) {
+          state.path = "/Computer";
+          state.currentNode = this.#fileSystem.resolve(state.path);
+        }
+        this.#renderExplorerWindow(state);
+      });
+    }
+
+    #renderExplorerWindow(state) {
+      const { element } = state;
+      const node = this.#fileSystem.resolve(state.path);
+      if (!node) return;
+      state.currentNode = node;
+      const title = state.path === "/Computer" ? "Computer" : node.name;
+      const titleText = element.querySelector("[data-explorer-title]");
+      const titleIcon = element.querySelector("[data-explorer-title-icon]");
+      if (titleText) titleText.textContent = title;
+      if (titleIcon) titleIcon.src = this.#explorerLocationIcon(state.path, node);
+      this.#updateWindowTaskLabel(element, title);
+
+      const back = element.querySelector("[data-explorer-back]");
+      const forward = element.querySelector("[data-explorer-forward]");
+      const up = element.querySelector("[data-explorer-up]");
+      if (back) back.disabled = state.back.length === 0;
+      if (forward) forward.disabled = state.forward.length === 0;
+      if (up) up.disabled = !this.#explorerParentPath(state.path);
+      const search = element.querySelector("[data-explorer-search]");
+      if (search) search.placeholder = `Search ${title}`;
+
+      element.querySelectorAll("[data-explorer-place]").forEach((button) => {
+        button.classList.toggle("is-current", button.dataset.explorerPlace === state.path);
+        button.setAttribute("aria-current", button.dataset.explorerPlace === state.path ? "page" : "false");
+      });
+      this.#renderExplorerBreadcrumb(state);
+
+      const content = element.querySelector("[data-explorer-content]");
+      if (!content) return;
+      state.marquee?.destroy();
+      state.marquee = null;
+      content.replaceChildren();
+      content.classList.toggle("is-computer", state.path === "/Computer");
+
+      if (state.path === "/Computer") {
+        this.#renderComputerView(state, content);
+      } else {
+        const query = state.search.trim().toLocaleLowerCase();
+        const items = [...this.#fileSystem.list(state.path)]
+          .filter(({ name }) => !query || name.toLocaleLowerCase().includes(query))
+          .sort((first, second) => {
+            if (state.sort === "type" && first.type !== second.type) return first.type.localeCompare(second.type);
+            return first.name.localeCompare(second.name, undefined, { sensitivity: "base", numeric: true });
+          });
+        const fragment = document.createDocumentFragment();
+        items.forEach((item) => fragment.append(this.#createExplorerItem(state, item)));
+        if (items.length === 0) {
+          fragment.append(createElement("p", {
+            className: "explorer-empty-message",
+            text: query ? "No items match your search." : "This folder is empty."
+          }));
+        }
+        content.append(fragment);
+      }
+
+      state.marquee = new DesktopSelectionMarquee(content, state.selectionState, {
+        itemSelector: "[data-explorer-item-id]",
+        onStart: () => {
+          state.selectedIds.clear();
+          this.#syncExplorerSelection(state);
+        },
+        onChange: (marqueeRect) => this.#updateExplorerMarqueeSelection(state, marqueeRect)
+      });
+      const status = element.querySelector("[data-explorer-status]");
+      if (status) {
+        const count = content.querySelectorAll("[data-explorer-item-id]").length;
+        status.textContent = `${count} item${count === 1 ? "" : "s"}${state.selectedIds.size ? `    ${state.selectedIds.size} selected` : ""}`;
+      }
+    }
+
+    #renderExplorerBreadcrumb(state) {
+      const container = state.element.querySelector("[data-explorer-breadcrumb]");
+      if (!container) return;
+      const parts = state.path.split("/").filter(Boolean);
+      let path = "";
+      const fragment = document.createDocumentFragment();
+      parts.forEach((part, index) => {
+        path += `/${part}`;
+        if (index > 0) fragment.append(createElement("span", { className: "explorer-crumb-separator", text: "›", "aria-hidden": "true" }));
+        fragment.append(createElement("button", {
+          type: "button",
+          className: "explorer-crumb",
+          text: part,
+          "data-explorer-crumb": path
+        }));
+      });
+      container.replaceChildren(fragment);
+    }
+
+    #explorerLocationIcon(path, node) {
+      if (path === "/Quick Access") return ASSETS.quickAccess;
+      if (path === "/Desktop") return ASSETS.desktop;
+      if (path === "/Documents") return ASSETS.documents;
+      if (path === "/Downloads") return ASSETS.downloads;
+      if (path === "/Music") return ASSETS.music;
+      if (path === "/Pictures") return ASSETS.pictures;
+      if (path === "/Videos") return ASSETS.videos;
+      if (path === "/Computer") return ASSETS.computer;
+      if (path === "/Recycle Bin") return this.#fileSystem.recycleItems.length ? ASSETS.recycleFull : ASSETS.recycleEmpty;
+      return this.#fileSystemItemIcon(node);
+    }
+
+    #fileSystemItemIcon(item) {
+      if (item.icon) return item.icon;
+      if (item.type === "computer") return ASSETS.computer;
+      if (item.type === "recycle") return this.#fileSystem.recycleItems.length ? ASSETS.recycleFull : ASSETS.recycleEmpty;
+      if (item.type === "drive") return ASSETS.systemDrive;
+      if (item.type === "dvd") return ASSETS.dvdDrive;
+      if (item.type === "folder") return item.children.length ? ASSETS.folderFull : ASSETS.folderEmpty;
+      return ASSETS.textFile;
+    }
+
+    #createExplorerItem(state, item) {
+      const selected = state.selectedIds.has(item.id);
+      const element = createElement("div", {
+        className: `explorer-item${selected ? " is-selected" : ""}`,
+        role: "gridcell",
+        tabIndex: -1,
+        title: item.name,
+        "aria-selected": String(selected),
+        "data-explorer-item-id": item.id
+      });
+      const image = createElement("img", { src: this.#fileSystemItemIcon(item), alt: "", draggable: false });
+      const label = createElement("span", { text: item.name, "data-explorer-item-label": "" });
+      element.append(image, label);
+      return element;
+    }
+
+    #renderComputerView(state, content) {
+      const items = this.#fileSystem.list("/Computer");
+      const groups = [
+        ["Hard Disk Drives (1)", items.filter(({ type }) => type === "drive")],
+        ["Devices with Removable Storage (1)", items.filter(({ type }) => type === "dvd")]
+      ];
+      groups.forEach(([label, groupItems]) => {
+        const section = createElement("section", { className: "explorer-drive-group" });
+        const heading = createElement("h2", { text: label });
+        const list = createElement("div", { className: "explorer-drive-list", role: "group" });
+        groupItems.forEach((item) => {
+          const row = createElement("div", {
+            className: `explorer-drive${state.selectedIds.has(item.id) ? " is-selected" : ""}`,
+            role: "gridcell",
+            tabIndex: -1,
+            "aria-selected": String(state.selectedIds.has(item.id)),
+            "data-explorer-item-id": item.id
+          });
+          const image = createElement("img", { src: this.#fileSystemItemIcon(item), alt: "", draggable: false });
+          const info = createElement("div", { className: "explorer-drive__info" });
+          info.append(createElement("span", { className: "explorer-drive__name", text: item.name }));
+          if (item.type === "drive") {
+            info.append(
+              createElement("span", { className: "explorer-drive__meter", "aria-label": `${item.meta.free} free of ${item.meta.capacity}` }, {}),
+              createElement("small", { text: `${item.meta.free} free of ${item.meta.capacity}` })
+            );
+          }
+          row.append(image, info);
+          list.append(row);
+        });
+        section.append(heading, list);
+        content.append(section);
+      });
+    }
+
+    #findExplorerItem(state, itemId) {
+      return this.#fileSystem.list(state.path).find(({ id }) => id === itemId) ?? null;
+    }
+
+    #openExplorerItem(state, itemId) {
+      const item = this.#findExplorerItem(state, itemId);
+      if (!item) return;
+      if (item.type === "dvd" || item.meta.systemFolder) {
+        this.#playCriticalStop();
+        this.#showExplorerMessage(state, item.name, "Not accessible.", ASSETS.accessDenied);
+        return;
+      }
+      if (item.targetPath) {
+        this.#navigateExplorer(state, item.targetPath);
+        return;
+      }
+      if (["folder", "drive"].includes(item.type)) {
+        this.#navigateExplorer(state, this.#fileSystem.pathFor(item));
+        return;
+      }
+      this.#showShellItemProperties(item, state.element);
+    }
+
+    #syncExplorerSelection(state) {
+      state.element.querySelectorAll("[data-explorer-item-id]").forEach((element) => {
+        const selected = state.selectedIds.has(element.dataset.explorerItemId);
+        element.classList.toggle("is-selected", selected);
+        element.setAttribute("aria-selected", String(selected));
+      });
+      const status = state.element.querySelector("[data-explorer-status]");
+      if (status) {
+        const count = state.element.querySelectorAll("[data-explorer-item-id]").length;
+        status.textContent = `${count} item${count === 1 ? "" : "s"}${state.selectedIds.size ? `    ${state.selectedIds.size} selected` : ""}`;
+      }
+    }
+
+    #updateExplorerMarqueeSelection(state, marqueeRect) {
+      if (!marqueeRect) return;
+      state.selectedIds.clear();
+      state.element.querySelectorAll("[data-explorer-item-id]").forEach((element) => {
+        if (this.#rectanglesIntersect(marqueeRect, element.getBoundingClientRect())) {
+          state.selectedIds.add(element.dataset.explorerItemId);
+        }
+      });
+      this.#syncExplorerSelection(state);
+    }
+
+    #beginExplorerRename(state, itemId) {
+      const item = this.#findExplorerItem(state, itemId);
+      const itemElement = state.element.querySelector(`[data-explorer-item-id="${CSS.escape(itemId)}"]`);
+      const label = itemElement?.querySelector("[data-explorer-item-label]");
+      if (!item || item.permanent || !label) return;
+      const input = createElement("input", { type: "text", value: item.name, "aria-label": "Rename item" });
+      let cancelled = false;
+      const finish = () => {
+        if (!cancelled) this.#fileSystem.rename(item, input.value);
+        else this.#renderExplorerWindow(state);
+      };
+      input.addEventListener("click", (event) => event.stopPropagation(), { signal: state.controller.signal });
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          input.blur();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cancelled = true;
+          input.blur();
+        }
+      }, { signal: state.controller.signal });
+      input.addEventListener("blur", finish, { once: true, signal: state.controller.signal });
+      label.replaceWith(input);
+      input.focus();
+      const extensionIndex = item.type !== "folder" ? item.name.lastIndexOf(".") : -1;
+      input.setSelectionRange(0, extensionIndex > 0 ? extensionIndex : input.value.length);
+    }
+
+    #deleteExplorerSelection(state) {
+      const items = [...state.selectedIds].map((id) => this.#findExplorerItem(state, id)).filter(Boolean);
+      const deletable = items.filter(({ permanent }) => !permanent);
+      if (deletable.length === 0) return;
+      this.#fileSystem.trash(deletable);
+      state.selectedIds.clear();
+    }
+
+    #openExplorerContextMenu(state, clientX, clientY, itemId) {
+      this.#closeDesktopContextMenu();
+      const item = itemId ? this.#findExplorerItem(state, itemId) : null;
+      const selected = [...state.selectedIds].map((id) => this.#findExplorerItem(state, id)).filter(Boolean);
+      const descriptors = item ? [
+        { label: "Open", action: () => this.#openExplorerItem(state, item.id) },
+        { separator: true },
+        { label: "Cut", disabled: item.permanent, action: () => { this.#shellClipboard = { operation: "cut", nodes: selected }; } },
+        { label: "Copy", disabled: item.permanent, action: () => { this.#shellClipboard = { operation: "copy", nodes: selected }; } },
+        { label: "Delete", disabled: item.permanent, action: () => this.#deleteExplorerSelection(state) },
+        { label: "Rename", disabled: item.permanent || selected.length !== 1, action: () => requestAnimationFrame(() => this.#beginExplorerRename(state, item.id)) },
+        { separator: true },
+        { label: "Properties", action: () => this.#showShellItemProperties(item, state.element) }
+      ] : [
+        { label: "View", submenu: [{ label: "Medium icons", checked: true, action: () => {} }] },
+        { label: "Sort by", submenu: [
+          { label: "Name", checked: state.sort === "name", action: () => { state.sort = "name"; this.#renderExplorerWindow(state); } },
+          { label: "Type", checked: state.sort === "type", action: () => { state.sort = "type"; this.#renderExplorerWindow(state); } }
+        ] },
+        { label: "New Folder", disabled: !["folder", "drive"].includes(state.currentNode.type), action: () => {
+          const created = this.#fileSystem.create(state.path, "folder", "New folder");
+          if (created) {
+            state.selectedIds.clear();
+            state.selectedIds.add(created.id);
+            requestAnimationFrame(() => this.#beginExplorerRename(state, created.id));
+          }
+        } },
+        { label: "Refresh", action: () => this.#renderExplorerWindow(state) },
+        { label: "Paste", disabled: !this.#shellClipboard || !["folder", "drive"].includes(state.currentNode.type), action: () => this.#pasteIntoExplorer(state) }
+      ];
+      const menu = this.#createContextMenu(descriptors);
+      this.#desktopContextMenu = menu;
+      this.#desktop.append(menu);
+      const rect = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(4, Math.min(window.innerWidth - rect.width - 4, clientX))}px`;
+      menu.style.top = `${Math.max(4, Math.min(window.innerHeight - TASKBAR_HEIGHT - rect.height - 4, clientY))}px`;
+      menu.focus({ preventScroll: true });
+    }
+
+    #pasteIntoExplorer(state) {
+      if (!this.#shellClipboard) return;
+      const { operation, nodes } = this.#shellClipboard;
+      const created = operation === "cut"
+        ? (this.#fileSystem.move(nodes, state.path) ? nodes : [])
+        : this.#fileSystem.copy(nodes, state.path);
+      if (operation === "cut" && created.length > 0) this.#shellClipboard = null;
+      state.selectedIds = new Set(created.map(({ id }) => id));
+      this.#renderExplorerWindow(state);
+    }
+
+    #showExplorerMessage(state, title, message, icon) {
+      const layer = state.element.querySelector("[data-explorer-modal-layer]");
+      if (!layer) return;
+      layer.hidden = false;
+      const card = createElement("section", { className: "explorer-modal", role: "alertdialog", "aria-label": title });
+      const heading = createElement("h2", { text: title });
+      const body = createElement("div", { className: "explorer-modal__message" });
+      body.append(createElement("img", { src: icon, alt: "", draggable: false }), createElement("p", { text: message }));
+      const ok = createElement("button", { type: "button", text: "OK" });
+      const dismiss = () => {
+        layer.hidden = true;
+        layer.replaceChildren();
+        state.element.focus({ preventScroll: true });
+      };
+      ok.addEventListener("click", dismiss, { once: true, signal: state.controller.signal });
+      card.append(heading, body, ok);
+      layer.replaceChildren(card);
+      ok.focus({ preventScroll: true });
+    }
+
+    #showShellItemProperties(item, ownerWindow = null) {
+      const dialog = createElement("section", {
+        className: "window shell-properties-window",
+        "data-window": "",
+        tabIndex: -1
+      });
+      const titleBar = createElement("div", { className: "title-bar" });
+      const titleText = createElement("div", { className: "title-bar-text", text: `${item.name} Properties` });
+      const controls = createElement("div", { className: "title-bar-controls" });
+      controls.append(createElement("button", { type: "button", "aria-label": "Close" }));
+      titleBar.append(titleText, controls);
+      const body = createElement("div", { className: "window-body shell-properties-window__body" });
+      const icon = createElement("img", { src: this.#fileSystemItemIcon(item), alt: "", draggable: false });
+      const details = createElement("div");
+      details.append(
+        createElement("strong", { text: item.name }),
+        createElement("p", { text: `Type: ${item.type === "folder" ? "File folder" : item.type}` }),
+        createElement("p", { text: `Location: ${item.parentPath ?? "Computer"}` })
+      );
+      const ok = createElement("button", { type: "button", text: "OK" });
+      ok.addEventListener("click", () => this.#closeWindow(dialog), { once: true });
+      body.append(icon, details, ok);
+      dialog.append(titleBar, body);
+      const rect = ownerWindow?.getBoundingClientRect();
+      assignStyles(dialog, {
+        position: "absolute",
+        zIndex: String(++this.#highestZIndex),
+        left: `${Math.max(8, (rect?.left ?? window.innerWidth / 2) + (rect ? rect.width / 2 - 165 : -165))}px`,
+        top: `${Math.max(8, (rect?.top ?? window.innerHeight / 2) + (rect ? rect.height / 2 - 110 : -110))}px`,
+        width: "330px",
+        minHeight: "220px",
+        display: "flex",
+        flexDirection: "column"
+      });
+      this.#desktop.append(dialog);
+      this.#raiseWindow(dialog);
+      ok.focus({ preventScroll: true });
+    }
+
+    #updateWindowTaskLabel(windowElement, title) {
+      const taskButton = this.#taskButtonFor(windowElement);
+      if (!taskButton) return;
+      taskButton.title = title;
+      taskButton.setAttribute("aria-label", title);
     }
 
     #configureTaskbar() {
@@ -1462,6 +3308,153 @@
           textShadow: "0 1px 2px #000"
         });
       }
+    }
+
+    #configureStartMenu() {
+      const menu = this.#desktop.querySelector("[data-start-menu]");
+      const startButton = this.#taskbar?.querySelector("[data-start-button]");
+      if (!menu || !startButton) return;
+
+      this.#startMenu = menu;
+      const iconSources = {
+        about: ASSETS.about,
+        chrome: ASSETS.chrome,
+        cmd: ASSETS.cmd,
+        calculator: ASSETS.calculator,
+        notepad: ASSETS.notepad,
+        documents: ASSETS.documents,
+        pictures: ASSETS.pictures,
+        music: ASSETS.music,
+        computer: ASSETS.computer,
+        controlPanel: ASSETS.controlPanel,
+        defaultPrograms: ASSETS.defaultPrograms,
+        help: ASSETS.help
+      };
+      const profile = menu.querySelector(".start-menu__profile");
+      const defaultProfile = menu.querySelector("[data-start-profile-default]");
+      const contextProfile = menu.querySelector("[data-start-profile-context]");
+      const powerArrow = menu.querySelector("[data-power-arrow]");
+      const powerOptions = powerArrow?.closest(".start-menu__power-options") ?? null;
+
+      if (defaultProfile) defaultProfile.src = ASSETS.userAvatar;
+      menu.querySelectorAll("[data-start-icon]").forEach((item) => {
+        const source = iconSources[item.dataset.startIcon];
+        const image = item.querySelector("img");
+        if (source && image) image.src = source;
+      });
+
+      const showContextProfile = (item) => {
+        const source = iconSources[item?.dataset.startIcon];
+        if (!source || !contextProfile || !profile) return;
+        contextProfile.src = source;
+        profile.classList.add("is-contextual");
+      };
+      const showDefaultProfile = () => profile?.classList.remove("is-contextual");
+      const setPowerMenuOpen = (isOpen) => {
+        powerOptions?.classList.toggle("is-open", isOpen);
+        powerArrow?.setAttribute("aria-expanded", String(isOpen));
+      };
+      const isOpen = () => menu.classList.contains("is-open");
+      const openMenu = () => {
+        window.clearTimeout(this.#startMenuCloseTimer);
+        menu.classList.add("is-visible");
+        menu.setAttribute("aria-hidden", "false");
+        startButton.setAttribute("aria-expanded", "true");
+        requestAnimationFrame(() => menu.classList.add("is-open"));
+      };
+      const closeMenu = ({ restoreFocus = false } = {}) => {
+        if (!menu.classList.contains("is-visible")) return;
+        menu.classList.remove("is-open");
+        menu.setAttribute("aria-hidden", "true");
+        startButton.setAttribute("aria-expanded", "false");
+        setPowerMenuOpen(false);
+        showDefaultProfile();
+        window.clearTimeout(this.#startMenuCloseTimer);
+        this.#startMenuCloseTimer = window.setTimeout(() => {
+          if (!menu.classList.contains("is-open")) menu.classList.remove("is-visible");
+        }, 210);
+        if (restoreFocus) startButton.focus({ preventScroll: true });
+      };
+
+      const openStartApp = (appName) => {
+        this.#openAppWindow(appName);
+        closeMenu();
+      };
+
+      menu.addEventListener("click", (event) => {
+        const appItem = event.target.closest(".start-menu__item[data-start-icon]");
+        if (appItem) {
+          openStartApp(appItem.dataset.startIcon);
+          return;
+        }
+        const systemItem = event.target.closest(".start-menu__system-list [data-start-icon]");
+        const explorerPaths = {
+          documents: "/Documents",
+          pictures: "/Pictures",
+          music: "/Music",
+          computer: "/Computer"
+        };
+        const path = explorerPaths[systemItem?.dataset.startIcon];
+        if (path) {
+          this.#openExplorer(path);
+          closeMenu();
+        }
+      }, { signal: this.#listeners.signal });
+
+      startButton.addEventListener("click", () => {
+        if (isOpen()) closeMenu();
+        else openMenu();
+      }, { signal: this.#listeners.signal });
+
+      menu.addEventListener("pointerover", (event) => {
+        const item = event.target.closest("[data-start-icon]");
+        if (item) showContextProfile(item);
+      }, { signal: this.#listeners.signal });
+      menu.addEventListener("pointerleave", showDefaultProfile, {
+        signal: this.#listeners.signal
+      });
+      menu.addEventListener("focusin", (event) => {
+        const item = event.target.closest("[data-start-icon]");
+        if (item) showContextProfile(item);
+      }, { signal: this.#listeners.signal });
+      menu.addEventListener("focusout", (event) => {
+        if (!event.relatedTarget?.closest?.("[data-start-icon]")) showDefaultProfile();
+      }, { signal: this.#listeners.signal });
+
+      powerArrow?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setPowerMenuOpen(!powerOptions?.classList.contains("is-open"));
+      }, { signal: this.#listeners.signal });
+      menu.querySelector(".start-menu__shutdown")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void this.#beginPowerSequence("shutdown");
+      }, { signal: this.#listeners.signal });
+      powerOptions?.querySelectorAll("[data-power-menu] button").forEach((button) => {
+        const action = button.textContent.trim().toLowerCase() === "restart"
+          ? "restart"
+          : "shutdown";
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void this.#beginPowerSequence(action);
+        }, { signal: this.#listeners.signal });
+      });
+      menu.addEventListener("click", (event) => {
+        if (powerOptions?.classList.contains("is-open") && !event.target.closest(".start-menu__power-options")) {
+          setPowerMenuOpen(false);
+        }
+      }, { signal: this.#listeners.signal });
+
+      document.addEventListener("pointerdown", (event) => {
+        if (!isOpen() || menu.contains(event.target) || startButton.contains(event.target)) return;
+        closeMenu();
+      }, { capture: true, signal: this.#listeners.signal });
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || !isOpen()) return;
+        event.preventDefault();
+        closeMenu({ restoreFocus: true });
+      }, { signal: this.#listeners.signal });
     }
 
     #configureSystemTray() {
@@ -2030,12 +4023,22 @@
       this.#volumeIcon.closest("button")?.setAttribute("aria-label", `Volume: ${this.#volume}%`);
     }
 
+    #playShellSound(name) {
+      const audio = name === "navigation" ? this.#navigationAudio : this.#criticalStopAudio;
+      if (!audio) return;
+      audio.pause();
+      audio.loop = false;
+      audio.currentTime = 0;
+      audio.volume = this.#volume / 100;
+      void audio.play().catch(() => {});
+    }
+
     #playCriticalStop() {
-      if (!this.#criticalStopAudio) return;
-      this.#criticalStopAudio.pause();
-      this.#criticalStopAudio.loop = false;
-      this.#criticalStopAudio.currentTime = 0;
-      void this.#criticalStopAudio.play().catch(() => {});
+      this.#playShellSound("critical");
+    }
+
+    #playNavigationStart() {
+      this.#playShellSound("navigation");
     }
 
     #formatLongDate(date) {
@@ -2045,6 +4048,488 @@
         month: "long",
         day: "numeric"
       }).format(date);
+    }
+
+    async #beginPowerSequence(action) {
+      if (this.#state !== "desktop" || this.#powerSequenceInProgress) return;
+
+      this.#powerSequenceInProgress = true;
+      const isRestart = action === "restart";
+      const powerAssetsReady = this.#preloadPowerAssets();
+
+      // Prime delayed audio while this trusted click is still on the stack.
+      // Volume remains at zero until the state that owns the sound is shown.
+      if (isRestart) {
+        this.#startupSoundHasPlayed = false;
+        this.#primeStartupAudio();
+        this.#primeBiosAudio();
+      } else {
+        this.#primeShutdownAudio();
+        this.#primeDeskAudio();
+      }
+
+      try {
+        // Nothing visible or interactive changes during this authentic shell lag.
+        await wait(POWER_ACTION_LAG_MS);
+
+        this.#setState(isRestart ? "restarting" : "shutting-down");
+        this.#unmountDesktop();
+
+        const transitionScreen = this.#createPowerTransitionScreen(action);
+        const blackVeil = transitionScreen.querySelector("[data-black-veil]");
+        this.#root.append(transitionScreen);
+        if (!isRestart) this.#playShutdownAudio();
+        await nextPaint();
+
+        if (blackVeil) blackVeil.style.opacity = "0";
+        await Promise.all([
+          powerAssetsReady,
+          wait(POWER_TRANSITION_DURATION_MS)
+        ]);
+        transitionScreen.remove();
+
+        this.#setState("no-signal");
+        const noSignalScreen = this.#createNoSignalScreen();
+        this.#root.append(noSignalScreen);
+        await wait(NO_SIGNAL_DURATION_MS);
+
+        if (isRestart) {
+          await this.#bootCleanSystem(noSignalScreen);
+          return;
+        }
+
+        noSignalScreen.querySelector("[data-no-signal-alert]")?.remove();
+        await wait(POST_SHUTDOWN_BLACK_DURATION_MS);
+        noSignalScreen.remove();
+        this.#setState("desk-view");
+        this.#showDeskView();
+        this.#powerSequenceInProgress = false;
+      } catch (error) {
+        this.#powerSequenceInProgress = false;
+        console.error(`Windows 7 ${action} sequence failed.`, error);
+      }
+    }
+
+    #createPowerTransitionScreen(action) {
+      const screen = createElement("section", {
+        "aria-label": action === "restart" ? "Windows is restarting" : "Windows is shutting down",
+        "aria-live": "polite",
+        "data-screen": "power-transition"
+      }, {
+        position: "absolute",
+        zIndex: "2147483642",
+        inset: "0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        color: "#fff",
+        backgroundColor: "#0877c9",
+        backgroundImage: `url("${ASSETS.loginWallpaper}")`,
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover"
+      });
+      const status = createElement("div", {}, {
+        position: "relative",
+        zIndex: "1",
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        transform: "translateY(-1vh)"
+      });
+      const busy = createElement("img", {
+        src: ASSETS.busy,
+        alt: "",
+        draggable: false
+      }, {
+        display: "block",
+        width: "32px",
+        height: "32px",
+        objectFit: "contain"
+      });
+      const label = createElement("p", {
+        text: action === "restart" ? "Restarting..." : "Shutting down..."
+      }, {
+        margin: "0",
+        color: "#fff",
+        fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+        fontSize: "21px",
+        fontWeight: "400",
+        lineHeight: "32px",
+        textShadow: "0 1px 2px rgba(0, 29, 74, 0.85)",
+        whiteSpace: "nowrap"
+      });
+      const blackVeil = createElement("div", {
+        "data-black-veil": "",
+        "aria-hidden": "true"
+      }, {
+        position: "absolute",
+        zIndex: "2",
+        inset: "0",
+        background: "#000",
+        opacity: "1",
+        pointerEvents: "none",
+        transition: `opacity ${TRANSITION_MS}ms ease`
+      });
+
+      status.append(busy, label);
+      screen.append(status, blackVeil);
+      return screen;
+    }
+
+    #createNoSignalScreen() {
+      const screen = createElement("section", {
+        "aria-label": "Monitor has no signal",
+        "data-screen": "no-signal"
+      }, {
+        position: "absolute",
+        zIndex: "2147483643",
+        inset: "0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        background: "#000"
+      });
+      const alert = createElement("div", {
+        text: "NO SIGNAL",
+        "data-no-signal-alert": ""
+      }, {
+        boxSizing: "border-box",
+        minWidth: "180px",
+        padding: "20px 28px",
+        color: "#fff",
+        background: "#0645c7",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "24px",
+        fontWeight: "700",
+        lineHeight: "1",
+        letterSpacing: "0.5px",
+        textAlign: "center",
+        textShadow: "1px 1px 0 rgba(0, 0, 0, 0.45)"
+      });
+
+      screen.append(alert);
+      return screen;
+    }
+
+    #showDeskView() {
+      const screen = createElement("section", {
+        "aria-label": "Computer desk view. Press the computer power button to start Windows",
+        "data-screen": "desk-view"
+      }, {
+        position: "absolute",
+        zIndex: "2147483642",
+        inset: "0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        background: "#000"
+      });
+      const imageStage = createElement("div", {}, {
+        position: "relative",
+        flex: "0 0 auto",
+        width: `min(100vw, ${(DESK_IMAGE_WIDTH / DESK_IMAGE_HEIGHT) * 100}vh)`,
+        aspectRatio: `${DESK_IMAGE_WIDTH} / ${DESK_IMAGE_HEIGHT}`,
+        maxHeight: "100vh"
+      });
+      const desk = createElement("img", {
+        src: ASSETS.deskView,
+        alt: "A desk with a powered-off computer",
+        draggable: false
+      }, {
+        display: "block",
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+        userSelect: "none"
+      });
+      const powerButton = createElement("button", {
+        type: "button",
+        "aria-label": "Power on computer"
+      }, {
+        position: "absolute",
+        left: `${(POWER_HOTSPOT.left / DESK_IMAGE_WIDTH) * 100}%`,
+        top: `${(POWER_HOTSPOT.top / DESK_IMAGE_HEIGHT) * 100}%`,
+        width: `${((POWER_HOTSPOT.right - POWER_HOTSPOT.left) / DESK_IMAGE_WIDTH) * 100}%`,
+        height: `${((POWER_HOTSPOT.bottom - POWER_HOTSPOT.top) / DESK_IMAGE_HEIGHT) * 100}%`,
+        minWidth: "0",
+        minHeight: "0",
+        margin: "0",
+        padding: "0",
+        border: "0",
+        borderRadius: "0",
+        outline: "0",
+        opacity: "0",
+        background: "transparent",
+        boxShadow: "none",
+        cursor: `url("${ASSETS.cursorLink}") 6 2, pointer`
+      });
+
+      powerButton.addEventListener("click", () => {
+        if (this.#powerSequenceInProgress) return;
+        this.#powerSequenceInProgress = true;
+        this.#stopDeskAudio();
+        this.#startupSoundHasPlayed = false;
+        this.#primeStartupAudio();
+        this.#primeBiosAudio();
+        void this.#bootCleanSystem(screen);
+      }, { once: true });
+
+      imageStage.append(desk, powerButton);
+      screen.append(imageStage);
+      this.#root.append(screen);
+      this.#playDeskAudio();
+    }
+
+    #unmountDesktop() {
+      this.#cancelDrag();
+      this.#cancelResize();
+      this.#cancelDesktopItemDrag();
+      this.#desktopMarquee?.destroy();
+      this.#desktopMarquee = null;
+      this.#fileSystemUnsubscribe?.();
+      this.#fileSystemUnsubscribe = null;
+      this.#explorerWindows.forEach((state) => {
+        state.marquee?.destroy();
+        state.controller.abort();
+      });
+      this.#explorerWindows.clear();
+      this.#listeners.abort();
+      window.clearInterval(this.#clockTimer);
+      window.clearInterval(this.#analogClockTimer);
+      window.clearTimeout(this.#desktopRefreshTimer);
+      window.clearTimeout(this.#startMenuCloseTimer);
+      this.#desktop.remove();
+    }
+
+    #mountCleanDesktop() {
+      this.#listeners = new AbortController();
+      this.#desktop = this.#desktopTemplate.cloneNode(true);
+      this.#taskbar = this.#desktop.querySelector("[data-taskbar]");
+      this.#root.append(this.#desktop);
+
+      this.#highestZIndex = 100;
+      this.#drag = null;
+      this.#dragFrame = 0;
+      this.#resize = null;
+      this.#resizeFrame = 0;
+      this.#loginScreen = null;
+      this.#loginSubmissionInProgress = false;
+      this.#clockTimer = 0;
+      this.#analogClockTimer = 0;
+      this.#trayFlyout = null;
+      this.#trayFlyoutOwner = null;
+      this.#trayTooltip = null;
+      this.#startMenu = null;
+      this.#startMenuCloseTimer = 0;
+      this.#volumeIcon = null;
+      this.#volume = 100;
+      this.#desktopIconLayer = null;
+      this.#desktopContextMenu = null;
+      this.#desktopFileInput = null;
+      this.#fileSystem = new ShellFileSystem();
+      this.#fileSystemUnsubscribe = null;
+      this.#explorerWindows = new Map();
+      this.#explorerSequence = 0;
+      this.#selectedDesktopItemId = null;
+      this.#desktopItemDrag = null;
+      this.#desktopItemDragFrame = 0;
+      this.#lastDesktopClick = { itemId: null, time: 0 };
+      this.#desktopRefreshTimer = 0;
+      this.#desktopItemSequence = 0;
+      this.#desktopIconSize = "medium";
+      this.#desktopAutoArrange = false;
+      this.#desktopAlignToGrid = true;
+      this.#shellClipboard = null;
+      this.#contextMenuPoint = { x: 16, y: 96 };
+      this.#windowAnimations = new WeakMap();
+      Object.assign(this.#desktopSelectionState, {
+        active: false,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        bounds: null
+      });
+
+      this.#configureDesktop();
+      this.#configureDesktopItems();
+      this.#bindWindowManager();
+    }
+
+    async #bootCleanSystem(previousScreen) {
+      this.#stopDeskAudio();
+      previousScreen?.remove();
+      this.#setState("boot");
+      this.#mountCleanDesktop();
+
+      try {
+        await this.#runBiosPostSequence();
+        await this.#runBootSequence();
+      } finally {
+        this.#powerSequenceInProgress = false;
+      }
+    }
+
+    async #runBiosPostSequence() {
+      const biosScreen = this.#createStartupGate();
+      this.#root.append(biosScreen);
+
+      await Promise.all([
+        this.#animateBiosPost(biosScreen),
+        this.#playBiosAudioExcerpt()
+      ]);
+      biosScreen.remove();
+    }
+
+    async #runBootSequence() {
+      this.#bootedAt = performance.now();
+      const bootScreen = this.#createBootScreen();
+      this.#root.append(bootScreen);
+
+      // Asset loading and the authentic boot hold run concurrently.
+      await Promise.all([this.#preloadDesktopAssets(), wait(BOOT_DURATION_MS)]);
+      await this.#showLoginScreen(bootScreen);
+    }
+
+    #createStartupGate() {
+      const screen = createElement("section", {
+        "aria-label": "BIOS power-on self-test. Click or press a key to power on",
+        "data-screen": "startup-gate",
+        tabIndex: 0
+      }, {
+        position: "absolute",
+        zIndex: "2147483641",
+        inset: "0",
+        boxSizing: "border-box",
+        padding: "24px 30px",
+        overflow: "hidden",
+        color: "#e8e8e8",
+        background: "#000",
+        cursor: "default",
+        outline: "none",
+        userSelect: "none"
+      });
+      const logo = createElement("pre", {
+        text: [
+          "       ___    __  __  ___",
+          "      / _ \\  |  \\/  ||_ _|",
+          "     / /_\\ \\ | |\\/| | | |",
+          "     |  _  | | |  | | | |",
+          "     |_| |_| |_|  |_||___|",
+          "       AMERICAN MEGATRENDS"
+        ].join("\n")
+      }, {
+        margin: "0 0 18px",
+        color: "#d82525",
+        fontFamily: "Consolas, 'Lucida Console', monospace",
+        fontSize: "clamp(11px, 1.15vw, 15px)",
+        fontWeight: "700",
+        lineHeight: "1.05",
+        whiteSpace: "pre"
+      });
+      const postOutput = createElement("pre", {
+        "data-bios-output": "",
+        text: ""
+      }, {
+        margin: "0",
+        color: "inherit",
+        fontFamily: "Consolas, 'Lucida Console', monospace",
+        fontSize: "clamp(12px, 1.25vw, 16px)",
+        fontWeight: "400",
+        lineHeight: "1.35",
+        whiteSpace: "pre-wrap"
+      });
+      const prompt = createElement("p", {
+        "data-bios-prompt": "",
+        text: "Press any key or click anywhere to power on . . ."
+      }, {
+        position: "absolute",
+        left: "30px",
+        bottom: "28px",
+        margin: "0",
+        color: "#f2f2f2",
+        fontFamily: "Consolas, 'Lucida Console', monospace",
+        fontSize: "clamp(12px, 1.25vw, 16px)",
+        fontWeight: "400",
+        whiteSpace: "nowrap"
+      });
+
+      screen.append(logo, postOutput, prompt);
+      return screen;
+    }
+
+    #waitForStartupGesture(screen) {
+      return new Promise((resolve) => {
+        const controller = new AbortController();
+        const begin = () => {
+          // Start the real media element silently inside the trusted gesture.
+          // It remains playing silently through boot, so revealing its volume
+          // on the login screen does not depend on delayed autoplay permission.
+          this.#primeStartupAudio();
+          const biosAudioFinished = this.#playBiosAudioExcerpt();
+          controller.abort();
+          void Promise.all([
+            this.#animateBiosPost(screen),
+            biosAudioFinished
+          ]).then(resolve);
+        };
+
+        screen.addEventListener("pointerdown", begin, {
+          once: true,
+          signal: controller.signal
+        });
+        document.addEventListener("keydown", begin, {
+          once: true,
+          signal: controller.signal
+        });
+        screen.focus({ preventScroll: true });
+      });
+    }
+
+    async #animateBiosPost(screen) {
+      const output = screen.querySelector("[data-bios-output]");
+      const prompt = screen.querySelector("[data-bios-prompt]");
+      if (!output || !prompt) return;
+
+      const messages = [
+        "AMIBIOS (C)2026 American Megatrends, Inc.",
+        "xDele1ed System BIOS  v7.0.7601",
+        "BIOS Date: 07/15/26  Ver: 1.0.0",
+        "",
+        "CPU: Virtual x64 Processor @ 3.60 GHz",
+        "CPU microcode update loaded successfully",
+        "Memory frequency: DDR3-1600 MHz",
+        "Testing memory: 2048 MB OK",
+        "Testing memory: 4096 MB OK",
+        "Testing memory: 6144 MB OK",
+        "Testing memory: 8192 MB OK",
+        "",
+        "Initializing USB Controllers ... Done.",
+        "USB Devices: 1 Keyboard, 1 Mouse, 2 Hubs",
+        "Auto-detecting SATA Port 1 ... Virtual System Disk",
+        "Auto-detecting SATA Port 2 ... Virtual DVD-ROM",
+        "Checking NVRAM ... OK",
+        "Initializing Plug and Play Cards ... Done.",
+        "ACPI Controller ... Enabled",
+        "Verifying DMI Pool Data ........ Success",
+        "",
+        "Boot device detected: xDele1ed Virtual System Disk",
+        "Starting Windows Boot Manager ..."
+      ];
+
+      prompt.textContent = "DEL: BIOS Setup    F12: Boot Menu";
+      output.textContent = "";
+
+      for (const message of messages) {
+        output.textContent += `${message}\n`;
+        await wait(BIOS_LINE_DELAY_MS);
+      }
+
+      prompt.textContent = "Booting from virtual system disk . . .";
     }
 
     #createBootScreen() {
@@ -2163,7 +4648,7 @@
         borderRadius: "5px",
         objectFit: "cover"
       });
-      const username = createElement("h1", { text: "xDele1ed" }, {
+      const username = createElement("h1", { text: USERNAME }, {
         margin: "16px 0 8px",
         color: "#fff",
         fontSize: "24px",
@@ -2259,23 +4744,229 @@
         .filter(([name]) => !name.endsWith("Audio"))
         .map(([, path]) => path);
 
-      this.#startupAudio = new Audio();
-      this.#startupAudio.preload = "auto";
-      this.#startupAudio.src = ASSETS.startupAudio;
-      this.#criticalStopAudio = new Audio();
-      this.#criticalStopAudio.preload = "auto";
-      this.#criticalStopAudio.src = ASSETS.criticalStopAudio;
-
       const results = await Promise.allSettled([
         ...imagePaths.map((path) => this.#preloadImage(path)),
+        this.#preloadAudio(this.#biosAudio),
         this.#preloadAudio(this.#startupAudio),
-        this.#preloadAudio(this.#criticalStopAudio)
+        this.#preloadAudio(this.#shutdownAudio),
+        this.#preloadAudio(this.#loginAudio),
+        this.#preloadAudio(this.#criticalStopAudio),
+        this.#preloadAudio(this.#navigationAudio),
+        this.#preloadAudio(this.#deskAudio)
       ]);
       const failures = results.filter(({ status }) => status === "rejected");
 
       if (failures.length > 0) {
         console.warn(`Windows 7 asset preloader completed with ${failures.length} failure(s).`);
       }
+    }
+
+    #prepareAudioElements() {
+      this.#biosAudio = new Audio(ASSETS.biosAudio);
+      this.#biosAudio.preload = "auto";
+      this.#biosAudio.load();
+
+      this.#startupAudio = new Audio(ASSETS.startupAudio);
+      this.#startupAudio.preload = "auto";
+      this.#startupAudio.load();
+
+      this.#shutdownAudio = new Audio(ASSETS.shutdownAudio);
+      this.#shutdownAudio.preload = "auto";
+      this.#shutdownAudio.load();
+
+      this.#loginAudio = new Audio(ASSETS.loginAudio);
+      this.#loginAudio.preload = "auto";
+      this.#loginAudio.load();
+
+      this.#criticalStopAudio = new Audio(ASSETS.criticalStopAudio);
+      this.#criticalStopAudio.preload = "auto";
+      this.#criticalStopAudio.load();
+
+      this.#navigationAudio = new Audio(ASSETS.navigationAudio);
+      this.#navigationAudio.preload = "auto";
+      this.#navigationAudio.load();
+
+      this.#deskAudio = new Audio(ASSETS.deskAudio);
+      this.#deskAudio.preload = "auto";
+      this.#deskAudio.loop = true;
+      this.#deskAudio.load();
+    }
+
+    #preloadPowerAssets() {
+      if (this.#powerAssetPreload) return this.#powerAssetPreload;
+
+      this.#deskImage = new Image();
+      this.#deskImage.decoding = "async";
+      const imageReady = new Promise((resolve) => {
+        const finish = () => {
+          this.#deskImage.removeEventListener("load", finish);
+          this.#deskImage.removeEventListener("error", finish);
+          const decoding = this.#deskImage.naturalWidth > 0
+            ? this.#deskImage.decode?.().catch(() => {})
+            : null;
+          Promise.resolve(decoding).then(resolve);
+        };
+
+        if (this.#deskImage.complete && this.#deskImage.naturalWidth > 0) {
+          finish();
+          return;
+        }
+
+        this.#deskImage.addEventListener("load", finish, { once: true });
+        this.#deskImage.addEventListener("error", finish, { once: true });
+        this.#deskImage.src = ASSETS.deskView;
+      });
+
+      const audioReady = new Promise((resolve) => {
+        const audio = this.#deskAudio;
+        if (!audio || audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+          resolve();
+          return;
+        }
+
+        const finish = () => {
+          audio.removeEventListener("canplaythrough", finish);
+          audio.removeEventListener("error", finish);
+          resolve();
+        };
+        audio.addEventListener("canplaythrough", finish, { once: true });
+        audio.addEventListener("error", finish, { once: true });
+        audio.load();
+      });
+
+      this.#powerAssetPreload = Promise.all([imageReady, audioReady]);
+      return this.#powerAssetPreload;
+    }
+
+    #primeShutdownAudio() {
+      if (!this.#shutdownAudio) return;
+      this.#shutdownAudio.loop = true;
+      this.#shutdownAudio.volume = 0;
+      this.#shutdownAudio.currentTime = 0;
+      void this.#shutdownAudio.play().catch((error) => {
+        console.warn("Unable to unlock shutdown audio during the power gesture.", error);
+      });
+    }
+
+    #playShutdownAudio() {
+      if (!this.#shutdownAudio) return;
+      this.#shutdownAudio.loop = false;
+      this.#shutdownAudio.currentTime = 0;
+      this.#shutdownAudio.volume = 1;
+      if (this.#shutdownAudio.paused) {
+        void this.#shutdownAudio.play().catch((error) => {
+          console.warn("Shutdown audio could not begin.", error);
+        });
+      }
+    }
+
+    #playLoginAudio() {
+      if (!this.#loginAudio) return;
+      this.#loginAudio.pause();
+      this.#loginAudio.loop = false;
+      this.#loginAudio.currentTime = 0;
+      this.#loginAudio.volume = 1;
+      void this.#loginAudio.play().catch((error) => {
+        console.warn("Login audio could not begin.", error);
+      });
+    }
+
+    #primeDeskAudio() {
+      if (!this.#deskAudio) return;
+      this.#deskAudio.loop = true;
+      this.#deskAudio.volume = 0;
+      this.#deskAudio.currentTime = 0;
+      void this.#deskAudio.play().catch((error) => {
+        console.warn("Unable to unlock desk ambience during the shutdown gesture.", error);
+      });
+    }
+
+    #playDeskAudio() {
+      if (!this.#deskAudio) return;
+      this.#deskAudio.loop = true;
+      this.#deskAudio.volume = 1;
+      if (this.#deskAudio.paused) {
+        void this.#deskAudio.play().catch((error) => {
+          console.warn("Desk ambience could not begin.", error);
+        });
+      }
+    }
+
+    #stopDeskAudio() {
+      if (!this.#deskAudio) return;
+      this.#deskAudio.pause();
+      this.#deskAudio.loop = false;
+      this.#deskAudio.currentTime = 0;
+      this.#deskAudio.volume = 1;
+    }
+
+    #primeBiosAudio() {
+      if (!this.#biosAudio) return;
+      this.#biosAudio.loop = true;
+      this.#biosAudio.volume = 0;
+      this.#biosAudio.currentTime = 0;
+      void this.#biosAudio.play().catch((error) => {
+        console.warn("Unable to unlock BIOS audio during the power gesture.", error);
+      });
+    }
+
+    #playBiosAudioExcerpt() {
+      if (!this.#biosAudio) return Promise.resolve();
+
+      const audio = this.#biosAudio;
+      const wasPrimed = !audio.paused;
+      if (!wasPrimed) audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 1;
+      audio.loop = false;
+
+      return new Promise((resolve) => {
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          cancelAnimationFrame(this.#biosFadeFrame);
+          this.#biosFadeFrame = 0;
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = 1;
+          resolve();
+        };
+        const updateFade = () => {
+          const elapsedMs = audio.currentTime * 1000;
+          const fadeStartsAt = BIOS_AUDIO_DURATION_MS - BIOS_AUDIO_FADE_MS;
+
+          if (elapsedMs >= BIOS_AUDIO_DURATION_MS || audio.ended) {
+            finish();
+            return;
+          }
+
+          if (elapsedMs >= fadeStartsAt) {
+            const fadeProgress = (elapsedMs - fadeStartsAt) / BIOS_AUDIO_FADE_MS;
+            audio.volume = Math.max(0, 1 - fadeProgress);
+          }
+
+          this.#biosFadeFrame = requestAnimationFrame(updateFade);
+        };
+
+        const playback = audio.play();
+        playback?.then(() => {
+          this.#biosFadeFrame = requestAnimationFrame(updateFade);
+        }).catch((error) => {
+          console.warn("BIOS startup audio could not begin.", error);
+          finish();
+        });
+      });
+    }
+
+    #primeStartupAudio() {
+      if (!this.#startupAudio) return;
+
+      this.#startupAudio.loop = true;
+      this.#startupAudio.volume = 0;
+      void this.#startupAudio.play().catch((error) => {
+        console.warn("Unable to unlock startup audio during the startup gesture.", error);
+      });
     }
 
     #preloadImage(source) {
@@ -2305,7 +4996,9 @@
 
         audio.addEventListener("loadeddata", finish, { once: true });
         audio.addEventListener("error", finish, { once: true });
-        audio.load();
+        if (audio.networkState === HTMLMediaElement.NETWORK_EMPTY) {
+          audio.load();
+        }
       });
     }
 
@@ -2317,59 +5010,42 @@
       await nextPaint();
       this.#loginScreen.style.opacity = "1";
       bootScreen.style.opacity = "0";
+      this.#playStartupAudio();
 
       await wait(TRANSITION_MS);
       bootScreen.remove();
       this.#loginScreen.querySelector("input")?.focus({ preventScroll: true });
-      this.#playStartupAudio();
     }
 
     #playStartupAudio() {
       if (!this.#startupAudio || this.#startupSoundHasPlayed) return;
 
-      const armGestureRetry = () => {
-        if (this.#startupSoundHasPlayed || this.#audioUnlockController) return;
+      // This is deliberately a single attempt made only while entering the
+      // login state. Never retry from a later key/click event: the Enter key
+      // used to submit the login form must not start the sound on the desktop.
+      this.#startupSoundHasPlayed = true;
+      this.#startupAudio.loop = false;
+      this.#startupAudio.currentTime = STARTUP_AUDIO_OFFSET_SECONDS;
+      this.#startupAudio.volume = 1;
 
-        const controller = new AbortController();
-        this.#audioUnlockController = controller;
-        const retryOnce = () => {
-          // Aborting this shared controller removes both unlock listeners, so a
-          // later keyboard event cannot replay sound started by a pointer event.
-          controller.abort();
-          this.#audioUnlockController = null;
-          attemptPlayback();
-        };
-
-        document.addEventListener("pointerdown", retryOnce, {
-          capture: true,
-          signal: controller.signal
+      // The primed element should already be running. This fallback only
+      // recovers from media suspension; it is never attached to login input.
+      if (this.#startupAudio.paused) {
+        this.#startupAudio.play().catch((error) => {
+          console.warn("Startup audio could not begin on the login screen.", error);
         });
-        document.addEventListener("keydown", retryOnce, {
-          capture: true,
-          signal: controller.signal
-        });
-      };
-      const attemptPlayback = () => {
-        if (!this.#startupAudio || this.#startupSoundHasPlayed) return;
-
-        this.#startupSoundHasPlayed = true;
-        this.#startupAudio.loop = false;
-        this.#startupAudio.currentTime = 0;
-        const playback = this.#startupAudio.play();
-
-        playback?.catch(() => {
-          this.#startupSoundHasPlayed = false;
-          armGestureRetry();
-        });
-      };
-
-      attemptPlayback();
+      }
     }
 
     async #showDesktop() {
-      if (this.#state !== "login" || !this.#loginScreen) return;
+      if (this.#state !== "login" || !this.#loginScreen || this.#loginSubmissionInProgress) return;
+      this.#loginSubmissionInProgress = true;
 
+      // The startup cue belongs exclusively to the login screen. Stopping it
+      // here also prevents a pending browser play request from starting late.
+      this.#startupAudio?.pause();
       this.#setState("desktop");
+      this.#playLoginAudio();
       this.#desktop.style.visibility = "visible";
       this.#desktop.setAttribute("aria-hidden", "false");
       await nextPaint();
@@ -2381,18 +5057,22 @@
       await wait(TRANSITION_MS);
       this.#loginScreen.remove();
       this.#loginScreen = null;
-      this.#desktop.querySelector(".window button")?.focus({ preventScroll: true });
+      this.#taskbar?.querySelector("[data-start-button]")?.focus({ preventScroll: true });
     }
 
     #setState(nextState) {
       const transitions = {
         boot: ["login"],
         login: ["desktop"],
-        desktop: []
+        desktop: ["restarting", "shutting-down"],
+        restarting: ["no-signal"],
+        "shutting-down": ["no-signal"],
+        "no-signal": ["boot", "desk-view"],
+        "desk-view": ["boot"]
       };
 
-      if (!transitions[this.#state].includes(nextState)) {
-        throw new Error(`Invalid startup transition: ${this.#state} -> ${nextState}`);
+      if (!transitions[this.#state]?.includes(nextState)) {
+        throw new Error(`Invalid system transition: ${this.#state} -> ${nextState}`);
       }
 
       this.#state = nextState;
@@ -2405,6 +5085,10 @@
     #bindWindowManager() {
       const options = { signal: this.#listeners.signal };
 
+      this.#desktop.querySelector("[data-credits]")?.addEventListener("click", () => {
+        window.location.assign("https://github.com/xdele1edmc14/");
+      }, options);
+
       // A single capture listener raises every window before its child control
       // receives the pointer event.
       this.#desktop.addEventListener("pointerdown", (event) => {
@@ -2412,6 +5096,12 @@
         if (!windowElement || !this.#desktop.contains(windowElement)) return;
 
         this.#raiseWindow(windowElement);
+
+        const resizeHandle = event.target.closest("[data-resize-edge]");
+        if (resizeHandle && event.isPrimary && event.button === 0) {
+          this.#beginResize(event, windowElement, resizeHandle);
+          return;
+        }
 
         const titleBar = event.target.closest(".title-bar");
         const isControl = event.target.closest("button, input, select, textarea, a");
@@ -2422,19 +5112,33 @@
 
       this.#desktop.addEventListener("pointermove", (event) => {
         this.#updateDrag(event);
+        this.#updateResize(event);
       }, options);
       this.#desktop.addEventListener("pointerup", (event) => {
         this.#endDrag(event);
+        this.#endResize(event);
       }, options);
       this.#desktop.addEventListener("pointercancel", (event) => {
         this.#endDrag(event);
+        this.#endResize(event);
       }, options);
       this.#desktop.addEventListener("lostpointercapture", (event) => {
         this.#endDrag(event);
+        this.#endResize(event);
+      }, options);
+
+      this.#desktop.addEventListener("dblclick", (event) => {
+        const titleBar = event.target.closest(".window > .title-bar");
+        if (!titleBar || event.target.closest("button, input, select, textarea, a")) return;
+        const windowElement = titleBar.closest(".window");
+        const maximize = windowElement?.querySelector(':scope > .title-bar button[aria-label="Maximize"]');
+        if (!windowElement || !maximize || maximize.disabled || windowElement.hasAttribute("data-fixed-size")) return;
+        event.preventDefault();
+        this.#toggleMaximized(windowElement, maximize);
       }, options);
 
       this.#desktop.addEventListener("click", (event) => {
-        const control = event.target.closest("button[aria-label], .win-close");
+        const control = event.target.closest(".window .title-bar-controls button[aria-label], .window .win-close");
         if (control) {
           const windowElement = control.closest(".window");
           if (!windowElement) return;
@@ -2445,31 +5149,148 @@
 
           if (action === "close") this.#closeWindow(windowElement);
           if (action === "maximize") this.#toggleMaximized(windowElement, control);
-          if (action === "minimize") this.#toggleMinimized(windowElement, control);
+          if (action === "minimize") void this.#setMinimized(windowElement, true);
           return;
         }
 
         const taskButton = event.target.closest("[data-window-task]");
         if (taskButton) {
           const windowElement = document.getElementById(taskButton.dataset.windowTask);
-          if (!windowElement) return;
+          if (!windowElement || taskButton.dataset.animating === "true") return;
 
-          if (windowElement.classList.contains("minimized")) {
-            this.#setMinimized(windowElement, false);
+          const isActive = windowElement.classList.contains("active") &&
+            !windowElement.classList.contains("minimized") &&
+            !windowElement.hidden;
+          if (isActive) void this.#setMinimized(windowElement, true);
+          else if (windowElement.classList.contains("minimized") || windowElement.hidden) {
+            void this.#setMinimized(windowElement, false, { focus: true });
+          } else {
+            this.#raiseWindow(windowElement);
+            windowElement.focus({ preventScroll: true });
           }
-          this.#raiseWindow(windowElement);
         }
       }, options);
 
       window.addEventListener("resize", () => this.#handleResize(), options);
     }
 
+    #configureResizeHandles(windowElement) {
+      const cursorByEdge = {
+        n: [ASSETS.cursorVertical, "32 32", "ns-resize"],
+        s: [ASSETS.cursorVertical, "32 32", "ns-resize"],
+        e: [ASSETS.cursorHorizontal, "32 32", "ew-resize"],
+        w: [ASSETS.cursorHorizontal, "32 32", "ew-resize"],
+        ne: [ASSETS.cursorDiagonalUp, "32 32", "nesw-resize"],
+        sw: [ASSETS.cursorDiagonalUp, "32 32", "nesw-resize"],
+        nw: [ASSETS.cursorDiagonalDown, "32 32", "nwse-resize"],
+        se: [ASSETS.cursorDiagonalDown, "32 32", "nwse-resize"]
+      };
+
+      Object.entries(cursorByEdge).forEach(([edge, [source, hotspot, fallback]]) => {
+        const handle = createElement("div", {
+          className: "window-resize-handle",
+          "data-resize-edge": edge,
+          "aria-hidden": "true"
+        });
+        handle.style.cursor = `url("${source}") ${hotspot}, ${fallback}`;
+        windowElement.append(handle);
+      });
+    }
+
+    #openAppWindow(appName) {
+      const windowElement = this.#desktop.querySelector(`[data-app-window="${CSS.escape(appName)}"]`);
+      if (!windowElement) return;
+
+      const isClosed = windowElement.hidden && !windowElement.classList.contains("minimized");
+      if (isClosed && appName === "calculator") {
+        windowElement.dispatchEvent(new Event("calculator:reset"));
+      }
+      if (isClosed && appName === "cmd") {
+        windowElement.dispatchEvent(new Event("cmd:reset"));
+      }
+      windowElement.hidden = false;
+      this.#ensureTaskButton(windowElement);
+      if (windowElement.classList.contains("minimized")) {
+        void this.#setMinimized(windowElement, false, { focus: true });
+        return;
+      }
+      this.#raiseWindow(windowElement);
+      const preferredFocus = appName === "cmd"
+        ? windowElement.querySelector("[data-cmd-input]")
+        : windowElement.querySelector("button");
+      preferredFocus?.focus({ preventScroll: true });
+    }
+
+    #windowTaskAppearance(windowElement) {
+      if (windowElement.dataset.windowKind === "explorer") {
+        return { icon: ASSETS.computer, glow: "80, 174, 232" };
+      }
+      const appName = windowElement.dataset.appWindow;
+      const appearances = {
+        about: { icon: ASSETS.about, glow: "72, 177, 232" },
+        chrome: { icon: ASSETS.chrome, glow: "242, 194, 48" },
+        cmd: { icon: ASSETS.cmd, glow: "104, 215, 122" },
+        calculator: { icon: ASSETS.calculator, glow: "115, 172, 219" },
+        display: { icon: ASSETS.controlPanel, glow: "73, 161, 219" },
+        notepad: { icon: ASSETS.notepad, glow: "94, 164, 219" }
+      };
+      const embeddedIcon = windowElement.querySelector(".window-body img")?.getAttribute("src");
+      return appearances[appName] ?? { icon: embeddedIcon || ASSETS.about, glow: "91, 196, 240" };
+    }
+
+    #ensureTaskButton(windowElement) {
+      if (!this.#taskbar || !windowElement.id) return null;
+      const selector = `[data-window-task="${CSS.escape(windowElement.id)}"]`;
+      const existingButton = this.#taskbar.querySelector(selector);
+      if (existingButton) return existingButton;
+
+      const title = windowElement.querySelector(".title-bar-text")?.textContent?.trim() || "Window";
+      const appearance = this.#windowTaskAppearance(windowElement);
+      const taskButton = createElement("button", {
+        type: "button",
+        className: "taskbar-window-button",
+        title,
+        "aria-label": title,
+        "aria-pressed": "false",
+        "data-window-task": windowElement.id
+      });
+      taskButton.style.cursor = `url("${ASSETS.cursorLink}") 6 2, pointer`;
+      taskButton.style.setProperty("--task-glow-rgb", appearance.glow);
+      taskButton.append(createElement("img", {
+        src: appearance.icon,
+        alt: "",
+        draggable: false
+      }, { pointerEvents: "none" }));
+      this.#taskbar.insertBefore(taskButton, this.#taskbar.querySelector("[data-system-tray], [data-taskbar-clock]"));
+      this.#syncWindowTaskState(windowElement);
+      return taskButton;
+    }
+
+    #taskButtonFor(windowElement) {
+      if (!this.#taskbar || !windowElement.id) return null;
+      return this.#taskbar.querySelector(`[data-window-task="${CSS.escape(windowElement.id)}"]`);
+    }
+
+    #syncWindowTaskState(windowElement) {
+      const taskButton = this.#taskButtonFor(windowElement);
+      if (!taskButton) return;
+      const isMinimized = windowElement.classList.contains("minimized");
+      const isActive = windowElement.classList.contains("active") && !isMinimized;
+      taskButton.classList.toggle("is-active", isActive);
+      taskButton.classList.toggle("is-minimized", isMinimized);
+      taskButton.setAttribute("aria-pressed", String(isActive));
+    }
+
     #raiseWindow(windowElement) {
       windowElement.style.zIndex = String(++this.#highestZIndex);
       this.#desktop.querySelectorAll(".window.active").forEach((element) => {
-        if (element !== windowElement) element.classList.remove("active");
+        if (element !== windowElement) {
+          element.classList.remove("active");
+          this.#syncWindowTaskState(element);
+        }
       });
       windowElement.classList.add("active");
+      this.#syncWindowTaskState(windowElement);
     }
 
     #beginDrag(event, windowElement, titleBar) {
@@ -2562,23 +5383,145 @@
       document.body.style.userSelect = "";
     }
 
+    #beginResize(event, windowElement, handle) {
+      if (windowElement.classList.contains("maximized") ||
+          windowElement.classList.contains("minimized")) return;
+
+      const desktopRect = this.#desktop.getBoundingClientRect();
+      const windowRect = windowElement.getBoundingClientRect();
+      const computed = getComputedStyle(windowElement);
+      const availableHeight = Math.max(1, desktopRect.height - TASKBAR_HEIGHT);
+      const minWidth = Math.min(parseFloat(computed.minWidth) || 360, desktopRect.width);
+      const minHeight = Math.min(parseFloat(computed.minHeight) || 240, availableHeight);
+
+      this.#resize = {
+        pointerId: event.pointerId,
+        handle,
+        windowElement,
+        edge: handle.dataset.resizeEdge,
+        startX: event.clientX,
+        startY: event.clientY,
+        left: windowRect.left - desktopRect.left,
+        top: windowRect.top - desktopRect.top,
+        width: windowRect.width,
+        height: windowRect.height,
+        minWidth,
+        minHeight,
+        desktopWidth: desktopRect.width,
+        availableHeight,
+        pendingRect: null
+      };
+      handle.setPointerCapture(event.pointerId);
+      document.body.style.userSelect = "none";
+      event.preventDefault();
+    }
+
+    #updateResize(event) {
+      const resize = this.#resize;
+      if (!resize || event.pointerId !== resize.pointerId) return;
+
+      const deltaX = event.clientX - resize.startX;
+      const deltaY = event.clientY - resize.startY;
+      let left = resize.left;
+      let top = resize.top;
+      let right = resize.left + resize.width;
+      let bottom = resize.top + resize.height;
+
+      if (resize.edge.includes("e")) {
+        right = Math.min(resize.desktopWidth, Math.max(left + resize.minWidth, right + deltaX));
+      }
+      if (resize.edge.includes("s")) {
+        bottom = Math.min(resize.availableHeight, Math.max(top + resize.minHeight, bottom + deltaY));
+      }
+      if (resize.edge.includes("w")) {
+        left = Math.max(0, Math.min(right - resize.minWidth, left + deltaX));
+      }
+      if (resize.edge.includes("n")) {
+        top = Math.max(0, Math.min(bottom - resize.minHeight, top + deltaY));
+      }
+
+      resize.pendingRect = {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top
+      };
+      if (this.#resizeFrame === 0) {
+        this.#resizeFrame = requestAnimationFrame(() => this.#renderResize());
+      }
+    }
+
+    #renderResize() {
+      this.#resizeFrame = 0;
+      if (!this.#resize?.pendingRect) return;
+      const { left, top, width, height } = this.#resize.pendingRect;
+      assignStyles(this.#resize.windowElement, {
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+        transform: "none"
+      });
+    }
+
+    #endResize(event) {
+      const resize = this.#resize;
+      if (!resize || event.pointerId !== resize.pointerId) return;
+
+      if (this.#resizeFrame !== 0) {
+        cancelAnimationFrame(this.#resizeFrame);
+        this.#resizeFrame = 0;
+      }
+      this.#renderResize();
+      if (resize.handle.hasPointerCapture(resize.pointerId)) {
+        resize.handle.releasePointerCapture(resize.pointerId);
+      }
+      this.#resize = null;
+      document.body.style.userSelect = "";
+    }
+
+    #cancelResize() {
+      if (!this.#resize) return;
+      this.#resize = null;
+      cancelAnimationFrame(this.#resizeFrame);
+      this.#resizeFrame = 0;
+      document.body.style.userSelect = "";
+    }
+
     #closeWindow(windowElement) {
       if (this.#drag?.windowElement === windowElement) this.#cancelDrag();
+      if (this.#resize?.windowElement === windowElement) this.#cancelResize();
+      this.#windowAnimations.get(windowElement)?.cancel();
+      this.#windowAnimations.delete(windowElement);
 
-      const taskButton = windowElement.id
-        ? this.#desktop.querySelector(`[data-window-task="${CSS.escape(windowElement.id)}"]`)
-        : null;
+      const explorerState = this.#explorerWindows.get(windowElement.id);
+      if (explorerState) {
+        explorerState.marquee?.destroy();
+        explorerState.controller.abort();
+        this.#explorerWindows.delete(windowElement.id);
+      }
+      if (windowElement.dataset.appWindow === "cmd") {
+        windowElement.dispatchEvent(new Event("cmd:close"));
+      }
+      const taskButton = this.#taskButtonFor(windowElement);
       taskButton?.remove();
-      windowElement.remove();
+      if (windowElement.dataset.appWindow) {
+        windowElement.hidden = true;
+        windowElement.classList.remove("active", "minimized", "is-window-animating");
+        windowElement.style.removeProperty("transform");
+        windowElement.style.removeProperty("opacity");
+        windowElement.style.removeProperty("transform-origin");
+      } else {
+        windowElement.remove();
+      }
+      this.#activateTopVisibleWindow();
     }
 
     #toggleMaximized(windowElement, control) {
       const shouldMaximize = !windowElement.classList.contains("maximized");
 
       if (shouldMaximize) {
-        if (windowElement.classList.contains("minimized")) {
-          this.#setMinimized(windowElement, false);
-        }
+        if (windowElement.classList.contains("minimized")) return;
 
         windowElement.dataset.restoreRect = JSON.stringify({
           left: windowElement.style.left,
@@ -2616,36 +5559,98 @@
       });
     }
 
-    #toggleMinimized(windowElement, control) {
-      const shouldMinimize = !windowElement.classList.contains("minimized");
-      this.#setMinimized(windowElement, shouldMinimize);
-      control.setAttribute("aria-pressed", String(shouldMinimize));
+    #toggleMinimized(windowElement) {
+      void this.#setMinimized(windowElement, !windowElement.classList.contains("minimized"));
     }
 
-    #setMinimized(windowElement, shouldMinimize) {
-      const titleBar = windowElement.querySelector(".title-bar");
-      const children = [...windowElement.children].filter((child) => child !== titleBar);
-
-      windowElement.classList.toggle("minimized", shouldMinimize);
-      if (shouldMinimize) {
-        const priorHiddenStates = new Map(children.map((child) => [child, child.hidden]));
-        this.#minimizedChildren.set(windowElement, priorHiddenStates);
-        children.forEach((child) => { child.hidden = true; });
-        windowElement.dataset.restoreHeight = windowElement.style.height;
-        windowElement.style.height = `${Math.max(30, titleBar?.offsetHeight ?? 30)}px`;
-      } else {
-        const priorHiddenStates = this.#minimizedChildren.get(windowElement);
-        children.forEach((child) => {
-          child.hidden = priorHiddenStates?.get(child) ?? false;
-        });
-        windowElement.style.height = windowElement.dataset.restoreHeight || windowElement.style.height;
-        delete windowElement.dataset.restoreHeight;
-        this.#minimizedChildren.delete(windowElement);
-
-        if (windowElement.classList.contains("maximized")) {
-          this.#layoutMaximizedWindow(windowElement);
-        }
+    async #setMinimized(windowElement, shouldMinimize, { focus = false } = {}) {
+      const isMinimized = windowElement.classList.contains("minimized");
+      if (shouldMinimize === isMinimized && !this.#windowAnimations.has(windowElement)) {
+        if (!shouldMinimize && focus) this.#raiseWindow(windowElement);
+        return;
       }
+
+      if (this.#drag?.windowElement === windowElement) this.#cancelDrag();
+      if (this.#resize?.windowElement === windowElement) this.#cancelResize();
+
+      const taskButton = this.#ensureTaskButton(windowElement);
+      if (!taskButton) return;
+      this.#windowAnimations.get(windowElement)?.cancel();
+
+      if (!shouldMinimize) {
+        windowElement.hidden = false;
+        windowElement.classList.remove("minimized");
+        if (windowElement.classList.contains("maximized")) this.#layoutMaximizedWindow(windowElement);
+      }
+
+      const windowRect = windowElement.getBoundingClientRect();
+      const taskRect = taskButton.getBoundingClientRect();
+      const targetScale = WINDOW_MINIMIZED_SCALE;
+      const targetX = taskRect.left + taskRect.width / 2;
+      const targetY = taskRect.top + taskRect.height / 2;
+      const translateX = targetX - (windowRect.left + windowRect.width * targetScale / 2);
+      const translateY = targetY - (windowRect.top + windowRect.height * targetScale / 2);
+      const endpoint = {
+        transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${targetScale})`,
+        opacity: 0
+      };
+      const resting = { transform: "translate3d(0, 0, 0) scale(1)", opacity: 1 };
+      const keyframes = shouldMinimize ? [resting, endpoint] : [endpoint, resting];
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      windowElement.classList.add("is-window-animating");
+      windowElement.style.transformOrigin = "0 0";
+      taskButton.dataset.animating = "true";
+      taskButton.classList.add("is-animating");
+
+      let animation = null;
+      if (!reduceMotion && typeof windowElement.animate === "function") {
+        animation = windowElement.animate(keyframes, {
+          duration: WINDOW_ANIMATION_MS,
+          easing: WINDOW_ANIMATION_EASING,
+          fill: "both"
+        });
+        this.#windowAnimations.set(windowElement, animation);
+        try {
+          await animation.finished;
+        } catch {
+          if (this.#windowAnimations.get(windowElement) !== animation) return;
+        }
+        if (this.#windowAnimations.get(windowElement) !== animation) return;
+      }
+
+      this.#windowAnimations.delete(windowElement);
+      animation?.cancel();
+      windowElement.classList.remove("is-window-animating");
+      windowElement.style.removeProperty("transform-origin");
+      windowElement.style.removeProperty("transform");
+      windowElement.style.removeProperty("opacity");
+      delete taskButton.dataset.animating;
+      taskButton.classList.remove("is-animating");
+
+      if (shouldMinimize) {
+        windowElement.classList.add("minimized");
+        windowElement.classList.remove("active");
+        windowElement.hidden = true;
+        this.#syncWindowTaskState(windowElement);
+        this.#activateTopVisibleWindow();
+      } else {
+        windowElement.classList.remove("minimized");
+        windowElement.hidden = false;
+        this.#raiseWindow(windowElement);
+        if (focus) windowElement.querySelector("button, input, [tabindex]")?.focus({ preventScroll: true });
+      }
+
+      const minimizeControl = windowElement.querySelector('button[aria-label="Minimize"]');
+      minimizeControl?.setAttribute("aria-pressed", String(shouldMinimize));
+    }
+
+    #activateTopVisibleWindow() {
+      const candidates = [...this.#desktop.querySelectorAll(".window")]
+        .filter((element) => !element.hidden && !element.classList.contains("minimized"));
+      const nextWindow = candidates.sort((first, second) =>
+        (Number(second.style.zIndex) || 0) - (Number(first.style.zIndex) || 0))[0];
+      if (nextWindow) this.#raiseWindow(nextWindow);
     }
 
     #handleResize() {

@@ -11,46 +11,306 @@
 <body style="margin: 0; overflow: hidden; background: #000;">
   <div id="windows-7-root">
     <section data-desktop aria-label="Desktop" hidden>
-      <div class="window active" id="documents-window" data-window>
+      <div class="window about-window" id="about-window" data-window data-app-window="about" hidden>
         <div class="title-bar">
-          <div class="title-bar-text">Documents</div>
+          <div class="title-bar-text">About</div>
           <div class="title-bar-controls">
             <button type="button" aria-label="Minimize"></button>
             <button type="button" aria-label="Maximize"></button>
             <button type="button" aria-label="Close"></button>
           </div>
         </div>
-        <div class="window-body has-space">
-          <menu role="tablist" aria-label="Explorer sections">
-            <button role="tab" aria-selected="true" aria-controls="documents-panel">Documents</button>
-            <button role="tab" aria-selected="false">Pictures</button>
-            <button role="tab" aria-selected="false">Music</button>
-          </menu>
-          <article id="documents-panel" role="tabpanel">
-            <p>Welcome to your Windows 7 desktop.</p>
-            <fieldset>
-              <legend>Libraries</legend>
-              <ul class="tree-view">
-                <li>Documents</li>
-                <li>Downloads</li>
-                <li>Pictures</li>
-              </ul>
-            </fieldset>
-          </article>
-          <section class="field-row" style="justify-content: flex-end;">
-            <button type="button">Organize</button>
-            <button type="button" class="default">Open</button>
-          </section>
-        </div>
-        <div class="status-bar">
-          <p class="status-bar-field">3 items</p>
-          <p class="status-bar-field">Desktop ready</p>
+        <div class="window-body about-window__body">
+          <header class="about-window__hero">
+            <img src="./assets/icons/about.png" alt="" draggable="false">
+            <h1>Windows <span>7</span></h1>
+          </header>
+          <div class="about-window__divider"></div>
+          <div class="about-window__copy">
+            <p>Version: Folk Valley 1.0</p>
+            <p>Windows 7™®©, xDele1ed Uncorporation</p>
+            <p>This Product is not affiliated with Microsoft, Some pieces of</p>
+            <p>shits are gonna say i have copied them. well, so what?</p>
+            <p>Yes, i know i am corny as hell. what can i do about it? i am deeply sorry.</p>
+          </div>
+          <div class="about-window__actions">
+            <button type="button" data-credits>Credits</button>
+          </div>
         </div>
       </div>
 
+      <div class="window calculator-window" id="calculator-window" data-window data-app-window="calculator" data-window-width="226" data-window-height="320" data-fixed-size hidden>
+        <div class="title-bar">
+          <div class="title-bar-text calculator-window__title">
+            <img src="./assets/icons/calculator.png" alt="" draggable="false">
+            <span>Calculator</span>
+          </div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize" disabled></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body calculator-window__body">
+          <nav class="calculator-menu-bar" aria-label="Calculator menus">
+            <button type="button">View</button>
+            <button type="button">Edit</button>
+            <button type="button">Help</button>
+          </nav>
+
+          <div class="calculator-workspace">
+            <div class="calculator-display" aria-label="Calculator display">
+              <span class="calculator-memory-indicator" data-calculator-memory-indicator aria-hidden="true"></span>
+              <output data-calculator-display aria-live="polite">0</output>
+            </div>
+
+            <div class="calculator-memory-keys" aria-label="Memory controls">
+              <button type="button" data-calculator-action="memory-clear">MC</button>
+              <button type="button" data-calculator-action="memory-recall">MR</button>
+              <button type="button" data-calculator-action="memory-store">MS</button>
+              <button type="button" data-calculator-action="memory-add">M+</button>
+              <button type="button" data-calculator-action="memory-subtract">M-</button>
+            </div>
+
+            <div class="calculator-keypad" aria-label="Calculator keypad">
+              <button type="button" class="calculator-key--command" data-calculator-action="backspace" aria-label="Backspace">←</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="clear-entry">CE</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="clear">C</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="sign" aria-label="Change sign">±</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="square-root" aria-label="Square root">√</button>
+
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="7">7</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="8">8</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="9">9</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="divide" aria-label="Divide">/</button>
+              <button type="button" data-calculator-action="percent" aria-label="Percent">%</button>
+
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="4">4</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="5">5</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="6">6</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="multiply" aria-label="Multiply">*</button>
+              <button type="button" data-calculator-action="reciprocal" aria-label="Reciprocal">1/x</button>
+
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="1">1</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="2">2</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="3">3</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="subtract" aria-label="Subtract">−</button>
+              <button type="button" class="calculator-key--equals" data-calculator-action="equals" aria-label="Equals">=</button>
+
+              <button type="button" class="calculator-key--number calculator-key--zero" data-calculator-action="digit" data-calculator-value="0">0</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="decimal" aria-label="Decimal point">.</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="add" aria-label="Add">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="window display-window" id="display-window" data-window data-app-window="display" data-window-width="774" data-window-height="620" data-window-min-width="640" data-window-min-height="480" hidden>
+        <div class="title-bar">
+          <div class="title-bar-text">Control Panel</div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body display-window__body">
+          <nav class="display-window__navigation" aria-label="Control Panel navigation">
+            <button type="button" class="display-window__nav-button" aria-label="Back">
+              <img src="./assets/leftarrow.png" alt="" draggable="false">
+            </button>
+            <button type="button" class="display-window__nav-button display-window__nav-button--forward" aria-label="Forward" disabled>
+              <img src="./assets/rightarrow.png" alt="" draggable="false">
+            </button>
+            <div class="display-window__address" aria-label="Current Control Panel location">
+              <img src="./assets/icons/control_panel.ico" alt="" draggable="false">
+              <span>Control Panel</span>
+              <span class="display-window__address-arrow" aria-hidden="true"></span>
+            </div>
+            <label class="display-window__search">
+              <input type="search" placeholder="Search Control Panel" aria-label="Search Control Panel">
+              <span aria-hidden="true"></span>
+            </label>
+          </nav>
+
+          <main class="display-window__content">
+            <h1>Change the appearance of your display</h1>
+            <div class="display-window__preview" aria-label="Display 1 preview">
+              <img src="./assets/display.png" alt="Display 1" draggable="false">
+            </div>
+
+            <div class="display-window__settings">
+              <label for="display-device">Display:</label>
+              <select id="display-device" disabled>
+                <option>1. Internal Display</option>
+              </select>
+
+              <label for="display-resolution">Resolution:</label>
+              <select id="display-resolution" disabled>
+                <option>1871 x 994 (Fullscreen)</option>
+              </select>
+
+              <label for="display-orientation">Orientation:</label>
+              <select id="display-orientation" disabled>
+                <option>Landscape</option>
+              </select>
+
+              <label for="display-zoom">Zoom:</label>
+              <select id="display-zoom" disabled>
+                <option>100%</option>
+              </select>
+            </div>
+
+            <div class="display-window__actions">
+              <button type="button" class="default win-close">OK</button>
+              <button type="button" class="win-close">Cancel</button>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="window cmd-window" id="cmd-window" data-window data-app-window="cmd" data-window-width="760" data-window-height="470" data-window-min-width="600" data-window-min-height="350" hidden>
+        <div class="title-bar">
+          <div class="title-bar-text cmd-window__title">
+            <img src="./assets/icons/cmd.png" alt="" draggable="false">
+            <span data-cmd-title>C:\Windows\system32\cmd.exe</span>
+          </div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body cmd-window__body" data-cmd-terminal tabindex="-1" role="application" aria-label="Command Prompt">
+          <div class="cmd-scrollback" data-cmd-scrollback aria-live="polite" aria-atomic="false"></div>
+          <div class="cmd-current-line" data-cmd-current-line>
+            <span class="cmd-prompt" data-cmd-prompt></span>
+            <span class="cmd-input-wrap">
+              <input class="cmd-input" data-cmd-input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command line">
+              <span class="cmd-input-measure" data-cmd-input-measure aria-hidden="true"></span>
+              <span class="cmd-block-cursor" data-cmd-cursor aria-hidden="true"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <template data-explorer-template>
+        <div class="window explorer-window" data-window data-window-kind="explorer" tabindex="-1">
+          <div class="title-bar">
+            <div class="title-bar-text explorer-window__title"><img data-explorer-title-icon alt="" draggable="false"><span data-explorer-title>Computer</span></div>
+            <div class="title-bar-controls"><button type="button" aria-label="Minimize"></button><button type="button" aria-label="Maximize"></button><button type="button" aria-label="Close"></button></div>
+          </div>
+          <div class="window-body explorer-window__body">
+            <nav class="explorer-navigation" aria-label="Folder navigation">
+              <button type="button" class="explorer-navigation__button explorer-navigation__button--back" data-explorer-back aria-label="Back"><img src="./assets/leftarrow.png" alt="" draggable="false"></button>
+              <button type="button" class="explorer-navigation__button explorer-navigation__button--forward" data-explorer-forward aria-label="Forward"><img src="./assets/rightarrow.png" alt="" draggable="false"></button>
+              <button type="button" class="explorer-navigation__button explorer-navigation__button--up" data-explorer-up aria-label="Up"></button>
+              <div class="explorer-address" data-explorer-breadcrumb aria-label="Address"></div>
+              <button type="button" class="explorer-refresh" data-explorer-refresh aria-label="Refresh"></button>
+              <label class="explorer-search"><input type="search" data-explorer-search aria-label="Search current folder"><span aria-hidden="true"></span></label>
+            </nav>
+            <div class="explorer-command-bar"><button type="button" data-explorer-organize>Organize</button><span data-explorer-command-text></span></div>
+            <div class="explorer-layout">
+              <aside class="explorer-sidebar" aria-label="Places">
+                <button type="button" class="explorer-sidebar__root" data-explorer-place="/Quick Access"><img src="./assets/icons/quick access.ico" alt=""><span>Quick Access</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Desktop"><img src="./assets/icons/desktop.ico" alt=""><span>Desktop</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Downloads"><img src="./assets/icons/downloads.ico" alt=""><span>Downloads</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Documents"><img src="./assets/icons/documents.ico" alt=""><span>Documents</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Music"><img src="./assets/icons/music.ico" alt=""><span>Music</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Pictures"><img src="./assets/icons/pictures.ico" alt=""><span>Pictures</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Videos"><img src="./assets/icons/videos.ico" alt=""><span>Videos</span></button>
+                <button type="button" class="explorer-sidebar__root explorer-sidebar__computer" data-explorer-place="/Computer"><img src="./assets/icons/computer.ico" alt=""><span>Computer</span></button>
+                <button type="button" class="explorer-sidebar__child explorer-sidebar__drive" data-explorer-place="/Computer/Local Disk (C:)"><img src="./assets/icons/system.ico" alt=""><span>System (C:)</span></button>
+                <button type="button" class="explorer-sidebar__child explorer-sidebar__drive" data-explorer-dvd><img src="./assets/icons/dvddrive.ico" alt=""><span>DVD Drive</span></button>
+              </aside>
+              <main class="explorer-content" data-explorer-content tabindex="0" role="grid" aria-label="Folder contents"></main>
+            </div>
+            <footer class="explorer-status" data-explorer-status></footer>
+          </div>
+          <div class="explorer-modal-layer" data-explorer-modal-layer hidden></div>
+        </div>
+      </template>
+
+      <section class="start-menu" id="start-menu" data-start-menu aria-label="Start menu" aria-hidden="true">
+        <div class="start-menu__columns">
+          <div class="start-menu__apps">
+            <ul class="start-menu__list" role="menu" aria-label="Programs">
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="about">
+                  <img alt="" draggable="false">
+                  <span>About</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="chrome">
+                  <img alt="" draggable="false">
+                  <span>Chrome</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="cmd">
+                  <img alt="" draggable="false">
+                  <span>Command Prompt</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="calculator">
+                  <img alt="" draggable="false">
+                  <span>Calculator</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="notepad">
+                  <img alt="" draggable="false">
+                  <span>Notepad</span>
+                </button>
+              </li>
+            </ul>
+
+            <button type="button" class="start-menu__all-programs" data-start-static>
+              <span class="start-menu__all-arrow" aria-hidden="true"></span>
+              <span>All Programs</span>
+            </button>
+
+            <div class="start-menu__search">
+              <input type="search" placeholder="Search programs and files" aria-label="Search programs and files">
+              <span aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <aside class="start-menu__system" aria-label="System locations">
+            <div class="start-menu__profile" aria-hidden="true">
+              <img class="start-menu__profile-default" data-start-profile-default alt="" draggable="false">
+              <img class="start-menu__profile-context" data-start-profile-context alt="" draggable="false">
+            </div>
+
+            <ul class="start-menu__system-list" role="menu">
+              <li role="menuitem"><button type="button" data-start-icon="documents"><span>Documents</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="pictures"><span>Pictures</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="music"><span>Music</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="computer"><span>Computer</span></button></li>
+              <li class="start-menu__system-divider" role="separator"></li>
+              <li role="menuitem"><button type="button" data-start-icon="controlPanel"><span>Control Panel</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="defaultPrograms"><span>Default Programs</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="help"><span>Help and Support</span></button></li>
+            </ul>
+
+            <div class="start-menu__power">
+              <button type="button" class="start-menu__shutdown">Shut down</button>
+              <div class="start-menu__power-options">
+                <button type="button" class="start-menu__power-arrow" data-power-arrow aria-label="Show power options" aria-haspopup="menu" aria-expanded="false"></button>
+                <ul role="menu" data-power-menu aria-label="Power options">
+                  <li role="menuitem"><button type="button">Shut down</button></li>
+                  <li role="menuitem"><button type="button">Restart</button></li>
+                </ul>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
       <nav data-taskbar aria-label="Windows taskbar">
-        <button type="button" data-start-button aria-label="Start"></button>
-        <button type="button" data-window-task="documents-window">Documents</button>
+        <button type="button" data-start-button aria-label="Start" aria-controls="start-menu" aria-expanded="false"></button>
         <time data-taskbar-clock aria-label="Current time"></time>
       </nav>
     </section>
