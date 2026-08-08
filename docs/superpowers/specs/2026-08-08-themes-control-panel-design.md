@@ -32,15 +32,15 @@ The page contains exactly eight themes. It does not include other categories, on
 2. **Architecture**
    - Wallpaper: `./assets/architecture.jpg`
    - Sound: `./assets/architecture.mp3`
-   - Appearance: Aero with an architecture-derived preview tint
+   - Appearance: Aero glass tinted `#7EA1D5` across the taskbar, Start menu, and windows
 3. **Landscape**
    - Wallpaper: `./assets/landscape.jpg`
    - Sound: `./assets/landscape.mp3`
-   - Appearance: Aero with a landscape-derived preview tint
+   - Appearance: Aero glass tinted `#B2B6BB` across the taskbar, Start menu, and windows
 4. **Nature**
    - Wallpaper: `./assets/nature.jpg`
    - Sound: `./assets/nature.mp3`
-   - Appearance: Aero with a nature-derived preview tint
+   - Appearance: Aero glass tinted `#B29ACC` across the taskbar, Start menu, and windows
 
 ### Basic and High Contrast Themes (4)
 
@@ -121,6 +121,8 @@ The shell root receives `data-theme="<theme-id>"`. Shared CSS custom properties 
 
 Theme-specific selectors use these variables to restyle the existing window frames, taskbar, Start menu, desktop context menus, and Control Panel content. Aero themes retain current glass. Basic removes transparency while preserving Windows 7 geometry. Classic uses opaque gray beveled materials. High Contrast themes prioritize exact requested colors and legibility over ornamental glass.
 
+Windows 7 retains the current default blue Aero palette. Architecture, Landscape, and Nature each derive their translucent glass gradients, rims, highlights, hover states, and active-window emphasis from their exact accent color. The tint applies consistently to the taskbar, Start menu, and every window frame; it is not limited to the selected card preview.
+
 ## Asset Preloading and Atomic Switching
 
 Only one theme-switch transaction may commit at a time. Each click receives a monotonically increasing request token; a superseded request may finish loading but cannot change the desktop or play sound.
@@ -194,6 +196,7 @@ Browser verification must cover:
 - both Themes entry points;
 - exactly two groups and eight cards with no extra links or categories;
 - all eight themes, including required wallpaper, solid desktop colors, shell surfaces, text, borders, accents, and sounds;
+- the exact Architecture `#7EA1D5`, Landscape `#B2B6BB`, and Nature `#B29ACC` Aero tints across taskbar, Start menu, and windows;
 - a throttled-network switch showing the retained wallpaper, grayscale transition, and `Please Wait` dialog until assets finish;
 - an asset failure that leaves the current desktop intact;
 - rapid repeated card activation committing only the latest request;
