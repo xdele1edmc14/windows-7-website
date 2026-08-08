@@ -275,7 +275,17 @@ git commit -m "feat: apply themes across the WebOS shell"
 ### Task 5: Browser verification and final corrections
 
 **Files:**
-- Modify as required by failing browser scenarios: `index.html`, `themes.js`, `themes.css`, `control-panel.js`, `control-panel.css`, `index.js`, `desktop.css`, and relevant tests.
+- Modify: `index.html`
+- Modify: `themes.js`
+- Modify: `themes.css`
+- Modify: `control-panel.js`
+- Modify: `control-panel.css`
+- Modify: `profile-store.js`
+- Modify: `index.js`
+- Modify: `desktop.css`
+- Modify: `tests/themes.test.js`
+- Modify: `tests/control-panel.test.js`
+- Modify: `tests/profile-store.test.js`
 
 **Interfaces:**
 - Consumes: completed feature from Tasks 1-4.
