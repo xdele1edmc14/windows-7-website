@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1170" height="2532" viewBox="0 0 1170 2532" role="img" aria-label="Abstract blue iPhone wallpaper">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#dde7ff"/>
+      <stop offset="0.44" stop-color="#8daaf0"/>
+      <stop offset="1" stop-color="#17264f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(236 428) rotate(61) scale(1260 910)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff4ed"/>
+      <stop offset="0.38" stop-color="#ecd6f6" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#b8cdfd" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ribbonA" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f7e3ee" stop-opacity="0.88"/>
+      <stop offset="0.5" stop-color="#9ec2ff" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#304d9d" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="ribbonB" x1="1" y1="0" x2="0" y2="1">
+      <stop stop-color="#ffffff" stop-opacity="0.78"/>
+      <stop offset="0.52" stop-color="#789ff1" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="#0b1738" stop-opacity="0.28"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+  </defs>
+  <rect width="1170" height="2532" fill="url(#base)"/>
+  <rect width="1170" height="2532" fill="url(#glow)"/>
+  <path d="M-310 740C56 338 423 306 735 529c304 217 443 592 748 734v753c-312-227-552-617-883-711-318-90-571 161-910 525Z" fill="url(#ribbonA)" filter="url(#soft)"/>
+  <path d="M-158 1575c264-328 579-460 871-323 277 130 439 461 721 580v850H-158Z" fill="url(#ribbonB)" filter="url(#soft)"/>
+  <ellipse cx="954" cy="334" rx="392" ry="572" fill="#fff" opacity="0.16" filter="url(#soft)"/>
+  <rect width="1170" height="2532" fill="#07122f" opacity="0.08"/>
+</svg>

@@ -4,13 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "7.css": "^0.21.1"
+    "7.css": "^0.21.1",
+    "framework7": "^9.1.2",
+    "framework7-icons": "^5.0.5"
   }
 }

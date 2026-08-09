@@ -4,6 +4,17 @@
   const PROFILE_SCHEMA_VERSION = 1;
   const DEFAULT_PROFILE_ID = "xDele1ed";
   const DEFAULT_WALLPAPER = "./assets/img0.png";
+  const DEFAULT_THEME_ID = "windows-7";
+  const VALID_THEME_IDS = new Set([
+    "windows-7",
+    "architecture",
+    "landscape",
+    "nature",
+    "windows-7-basic",
+    "windows-classic",
+    "high-contrast-black",
+    "high-contrast-white"
+  ]);
   const DATABASE_NAME = "windows7-web-os";
   const DATABASE_VERSION = 1;
   const PROFILE_STORE = "profiles";
@@ -66,6 +77,7 @@
     wallpaper: typeof settings.wallpaper === "string" && settings.wallpaper.trim()
       ? settings.wallpaper
       : DEFAULT_WALLPAPER,
+    themeId: VALID_THEME_IDS.has(settings.themeId) ? settings.themeId : DEFAULT_THEME_ID,
     volume: clamp(Math.round(finiteNumber(settings.volume, 100)), 0, 100),
     pinnedItems: normalizePinnedItems(settings.pinnedItems),
     apps: settings.apps && typeof settings.apps === "object" && !Array.isArray(settings.apps)
@@ -111,10 +123,15 @@
     if (!(roots instanceof Map) || roots.size === 0) throw new TypeError("Profile roots must be a non-empty Map.");
 
     const fileContents = [];
-    const serializedRoots = [...roots.entries()].map(([path, node]) => ({
-      path: String(path),
-      node: serializeNode(node, fileContents)
-    }));
+    const serializedRoots = [...roots.entries()].map(([path, node]) => {
+      const durableRoot = path === "/Desktop"
+        ? { ...node, children: (node.children ?? []).filter(({ parentId }) => parentId === null) }
+        : node;
+      return {
+        path: String(path),
+        node: serializeNode(durableRoot, fileContents)
+      };
+    });
     const rootPaths = new Set(serializedRoots.map(({ path }) => path));
     if (!rootPaths.has("/Desktop") || !rootPaths.has("/Recycle Bin")) {
       throw new TypeError("Profile roots must include Desktop and Recycle Bin.");
@@ -199,11 +216,19 @@
       isDropTarget: false
     });
     const roots = new Map(snapshot.roots.map(({ path, node }) => [path, restoreNode(node)]));
+    const desktopRoot = roots.get("/Desktop");
+    const desktopItems = [];
+    const collectDesktopItems = (node) => {
+      desktopItems.push(node);
+      node.children.forEach(collectDesktopItems);
+    };
+    desktopRoot.children.forEach(collectDesktopItems);
+    desktopRoot.children = desktopItems;
 
     return {
       sequence: Math.max(0, Math.floor(finiteNumber(snapshot.sequence, 0))),
       roots,
-      desktopItems: roots.get("/Desktop").children,
+      desktopItems,
       recycleItems: roots.get("/Recycle Bin").children,
       settings: normalizeProfileSettings(snapshot.settings)
     };

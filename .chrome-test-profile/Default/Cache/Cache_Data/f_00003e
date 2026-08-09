@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Windows 7</title>
+  <link rel="stylesheet" href="./node_modules/7.css/dist/7.css">
+  <link rel="stylesheet" href="./desktop.css">
+  <link rel="stylesheet" href="./paint.css">
+  <link rel="stylesheet" href="./photo-viewer.css">
+  <link rel="stylesheet" href="./notepad.css">
+  <script src="./chrome.js" defer></script>
+  <script src="./paint.js" defer></script>
+  <script src="./photo-viewer.js" defer></script>
+  <script src="./notepad.js" defer></script>
+  <script src="./index.js" defer></script>
+</head>
+<body style="margin: 0; overflow: hidden; background: #000;">
+  <div id="windows-7-root">
+    <section data-desktop aria-label="Desktop" hidden>
+      <div class="window about-window" id="about-window" data-window data-app-window="about" aria-labelledby="about-window-title" hidden>
+        <div class="title-bar">
+          <div class="title-bar-text" id="about-window-title">About Windows</div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body about-window__body">
+          <div class="about-window__content">
+            <header class="about-window__hero">
+              <img src="./assets/icons/about.png" alt="" draggable="false">
+              <div class="about-window__identity">
+                <h1>Windows <span>7</span></h1>
+                <p>Folk Valley</p>
+              </div>
+            </header>
+
+            <hr class="about-window__divider">
+
+            <div class="about-window__copy">
+              <p class="about-window__version">Microsoft Windows 7 Web Edition</p>
+              <p>Version 1.0 (Folk Valley)</p>
+              <p class="about-window__copyright">© xDele1ed Uncorporation. All rights reserved.</p>
+
+              <div class="about-window__license">
+                <span>This product is licensed to:</span>
+                <strong>xDele1ed</strong>
+              </div>
+
+              <p class="about-window__note">This independent web recreation is not affiliated with Microsoft. Built as a playful tribute to the Windows 7 desktop experience.</p>
+            </div>
+          </div>
+
+          <footer class="about-window__actions">
+            <button type="button" data-credits>Credits</button>
+            <button type="button" class="default win-close">OK</button>
+          </footer>
+        </div>
+      </div>
+
+      <div class="window calculator-window" id="calculator-window" data-window data-app-window="calculator" data-window-width="226" data-window-height="320" data-fixed-size hidden>
+        <div class="title-bar">
+          <div class="title-bar-text calculator-window__title">
+            <img src="./assets/icons/calculator.png" alt="" draggable="false">
+            <span>Calculator</span>
+          </div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize" disabled></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body calculator-window__body">
+          <nav class="calculator-menu-bar" aria-label="Calculator menus">
+            <button type="button">View</button>
+            <button type="button">Edit</button>
+            <button type="button">Help</button>
+          </nav>
+
+          <div class="calculator-workspace">
+            <div class="calculator-display" aria-label="Calculator display">
+              <span class="calculator-memory-indicator" data-calculator-memory-indicator aria-hidden="true"></span>
+              <output data-calculator-display aria-live="polite">0</output>
+            </div>
+
+            <div class="calculator-memory-keys" aria-label="Memory controls">
+              <button type="button" data-calculator-action="memory-clear">MC</button>
+              <button type="button" data-calculator-action="memory-recall">MR</button>
+              <button type="button" data-calculator-action="memory-store">MS</button>
+              <button type="button" data-calculator-action="memory-add">M+</button>
+              <button type="button" data-calculator-action="memory-subtract">M-</button>
+            </div>
+
+            <div class="calculator-keypad" aria-label="Calculator keypad">
+              <button type="button" class="calculator-key--command" data-calculator-action="backspace" aria-label="Backspace">←</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="clear-entry">CE</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="clear">C</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="sign" aria-label="Change sign">±</button>
+              <button type="button" class="calculator-key--command" data-calculator-action="square-root" aria-label="Square root">√</button>
+
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="7">7</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="8">8</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="9">9</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="divide" aria-label="Divide">/</button>
+              <button type="button" data-calculator-action="percent" aria-label="Percent">%</button>
+
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="4">4</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="5">5</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="6">6</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="multiply" aria-label="Multiply">*</button>
+              <button type="button" data-calculator-action="reciprocal" aria-label="Reciprocal">1/x</button>
+
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="1">1</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="2">2</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="digit" data-calculator-value="3">3</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="subtract" aria-label="Subtract">−</button>
+              <button type="button" class="calculator-key--equals" data-calculator-action="equals" aria-label="Equals">=</button>
+
+              <button type="button" class="calculator-key--number calculator-key--zero" data-calculator-action="digit" data-calculator-value="0">0</button>
+              <button type="button" class="calculator-key--number" data-calculator-action="decimal" aria-label="Decimal point">.</button>
+              <button type="button" data-calculator-action="operator" data-calculator-value="add" aria-label="Add">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="window paint-window" id="paint-window" data-window data-app-window="paint" data-window-width="1200" data-window-height="720" data-window-min-width="760" data-window-min-height="520" hidden>
+        <div class="title-bar paint-window__title-bar">
+          <div class="title-bar-text paint-window__title" data-paint-title>Untitled - Paint</div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body paint-window__body">
+          <div class="paint-ribbon">
+            <div class="paint-ribbon__topline">
+              <button type="button" class="paint-file-button" data-paint-file-button aria-haspopup="menu" aria-expanded="false" title="Paint"><img src="./assets/icons/paint.png" alt="" draggable="false"></button>
+              <div class="paint-quick-access" aria-label="Quick Access Toolbar">
+                <button type="button" data-paint-command="undo" title="Undo">↶</button>
+                <button type="button" data-paint-command="redo" title="Redo">↷</button>
+              </div>
+              <div class="paint-tabs" role="tablist" aria-label="Paint ribbon tabs">
+                <button type="button" role="tab" class="is-active" data-paint-tab="home" aria-selected="true">Home</button>
+                <button type="button" role="tab" data-paint-tab="view" aria-selected="false">View</button>
+              </div>
+            </div>
+
+            <div class="paint-file-menu" data-paint-file-menu role="menu" hidden>
+              <button type="button" data-paint-command="new"><span>New</span><kbd>Ctrl+N</kbd></button>
+              <button type="button" data-paint-command="open"><span>Open...</span><kbd>Ctrl+O</kbd></button>
+              <button type="button" data-paint-command="save"><span>Save</span><kbd>Ctrl+S</kbd></button>
+              <button type="button" data-paint-command="save-as"><span>Save as...</span><span>▸</span></button>
+              <hr>
+              <button type="button" disabled><span>Print</span><span>▸</span></button>
+              <button type="button" disabled><span>Send in email</span><span>▸</span></button>
+              <button type="button" data-paint-command="wallpaper"><span>Set as desktop background</span><span>▸</span></button>
+              <hr>
+              <button type="button" disabled><span>About Paint</span></button>
+              <button type="button" data-paint-command="exit"><span>Exit</span></button>
+            </div>
+
+            <div class="paint-ribbon__panel is-active" data-paint-panel="home">
+              <section class="paint-ribbon-group paint-ribbon-group--clipboard" aria-label="Clipboard">
+                <div class="paint-large-command"><button type="button" data-paint-command="paste" title="Paste"><span class="paint-command-icon">▣</span><span>Paste</span></button></div>
+                <div class="paint-command-stack">
+                  <button type="button" data-paint-command="cut">✂ Cut</button>
+                  <button type="button" data-paint-command="copy">▤ Copy</button>
+                </div>
+                <h2>Clipboard</h2>
+              </section>
+
+              <section class="paint-ribbon-group paint-ribbon-group--image" aria-label="Image">
+                <div class="paint-image-commands">
+                  <div class="paint-select-control">
+                    <button type="button" data-paint-tool="select" title="Select">▧<span>Select</span></button>
+                    <select data-paint-select-mode aria-label="Selection type">
+                      <option value="rect">Rectangular selection</option>
+                      <option value="free">Free-form selection</option>
+                    </select>
+                  </div>
+                  <div class="paint-command-stack">
+                    <button type="button" data-paint-command="crop">⌑ Crop</button>
+                    <button type="button" data-paint-command="resize">↔ Resize</button>
+                    <select data-paint-rotate aria-label="Rotate image">
+                      <option value="">Rotate</option>
+                      <option value="right">Rotate right 90°</option>
+                      <option value="left">Rotate left 90°</option>
+                      <option value="180">Rotate 180°</option>
+                    </select>
+                  </div>
+                </div>
+                <h2>Image</h2>
+              </section>
+
+              <section class="paint-ribbon-group paint-ribbon-group--tools" aria-label="Tools">
+                <div class="paint-tool-grid">
+                  <button type="button" data-paint-tool="pencil" title="Pencil">✎</button>
+                  <button type="button" data-paint-tool="fill" title="Fill with color">◩</button>
+                  <button type="button" data-paint-tool="text" title="Text">A</button>
+                  <button type="button" data-paint-tool="eraser" title="Eraser">▱</button>
+                  <button type="button" data-paint-tool="picker" title="Color picker">⌁</button>
+                  <button type="button" data-paint-tool="magnifier" title="Magnifier">⌕</button>
+                </div>
+                <h2>Tools</h2>
+              </section>
+
+              <section class="paint-ribbon-group paint-ribbon-group--brushes" aria-label="Brushes">
+                <button type="button" class="paint-brush-button" data-paint-tool="brush"><span>🖌</span><strong>Brushes</strong></button>
+                <select data-paint-brush-style aria-label="Brush style" title="Choose a brush">
+                  <option value="plain">Brush</option>
+                  <option value="calligraphy-1">Calligraphy brush 1</option>
+                  <option value="calligraphy-2">Calligraphy brush 2</option>
+                  <option value="airbrush">Airbrush</option>
+                  <option value="oil">Oil brush</option>
+                  <option value="crayon">Crayon</option>
+                  <option value="marker">Marker</option>
+                  <option value="natural-pencil">Natural pencil</option>
+                  <option value="watercolor">Watercolor brush</option>
+                </select>
+                <h2>Brushes</h2>
+              </section>
+
+              <section class="paint-ribbon-group paint-ribbon-group--shapes" aria-label="Shapes">
+                <div class="paint-shape-grid">
+                  <button type="button" data-paint-shape="line" title="Line">╱</button>
+                  <button type="button" data-paint-shape="curve" title="Curve">⌒</button>
+                  <button type="button" data-paint-shape="rectangle" title="Rectangle">□</button>
+                  <button type="button" data-paint-shape="rounded-rectangle" title="Rounded rectangle">▢</button>
+                  <button type="button" data-paint-shape="ellipse" title="Ellipse">○</button>
+                  <button type="button" data-paint-shape="triangle" title="Triangle">△</button>
+                </div>
+                <div class="paint-shape-options">
+                  <label>Outline <select data-paint-outline><option value="solid">Solid color</option><option value="none">No outline</option></select></label>
+                  <label>Fill <select data-paint-fill-style><option value="none">No fill</option><option value="solid">Solid color</option><option value="fill-only">Fill only</option></select></label>
+                </div>
+                <h2>Shapes</h2>
+              </section>
+
+              <section class="paint-ribbon-group paint-ribbon-group--size" aria-label="Size">
+                <label class="paint-size-control"><span class="paint-size-icon">☰</span><span>Size</span>
+                  <select data-paint-size aria-label="Line and brush size">
+                    <option value="1">1 px</option>
+                    <option value="2">2 px</option>
+                    <option value="4" selected>4 px</option>
+                    <option value="8">8 px</option>
+                    <option value="14">14 px</option>
+                  </select>
+                </label>
+                <h2>Size</h2>
+              </section>
+
+              <section class="paint-ribbon-group paint-ribbon-group--colors" aria-label="Colors">
+                <div class="paint-color-selectors">
+                  <button type="button" class="is-active" data-paint-color-target="primary"><span data-paint-color-one></span><small>Color 1</small></button>
+                  <button type="button" data-paint-color-target="secondary"><span data-paint-color-two></span><small>Color 2</small></button>
+                </div>
+                <div class="paint-palette" data-paint-palette aria-label="Color palette"></div>
+                <label class="paint-edit-colors" title="Edit colors"><span>🌈</span><strong>Edit<br>colors</strong><input type="color" data-paint-custom-color value="#000000"></label>
+                <h2>Colors</h2>
+              </section>
+            </div>
+
+            <div class="paint-ribbon__panel" data-paint-panel="view" hidden>
+              <section class="paint-ribbon-group paint-view-group" aria-label="Show or hide">
+                <label><input type="checkbox" data-paint-view="ruler"> Rulers</label>
+                <label><input type="checkbox" data-paint-view="grid"> Gridlines</label>
+                <h2>Show or hide</h2>
+              </section>
+              <section class="paint-ribbon-group paint-view-group" aria-label="Zoom">
+                <button type="button" data-paint-zoom="in">Zoom in</button>
+                <button type="button" data-paint-zoom="out">Zoom out</button>
+                <button type="button" data-paint-zoom="100">100%</button>
+                <h2>Zoom</h2>
+              </section>
+            </div>
+          </div>
+
+          <div class="paint-workspace" data-paint-workspace>
+            <div class="paint-ruler paint-ruler--horizontal" data-paint-ruler-horizontal hidden></div>
+            <div class="paint-ruler paint-ruler--vertical" data-paint-ruler-vertical hidden></div>
+            <div class="paint-canvas-stage" data-paint-stage>
+              <canvas data-paint-canvas width="800" height="600" aria-label="Paint canvas"></canvas>
+              <canvas data-paint-preview width="800" height="600" aria-hidden="true"></canvas>
+              <textarea data-paint-text-editor aria-label="Text box" hidden></textarea>
+              <div class="paint-canvas-resize-handle" data-paint-canvas-resize title="Resize canvas"></div>
+            </div>
+          </div>
+          <footer class="paint-statusbar">
+            <span data-paint-pointer-status>0, 0px</span>
+            <span data-paint-canvas-status>800 × 600px</span>
+            <span class="paint-statusbar__zoom"><button type="button" data-paint-zoom="out" aria-label="Zoom out">−</button><input type="range" min="1" max="4" step="1" value="1" data-paint-zoom-slider aria-label="Zoom"><button type="button" data-paint-zoom="in" aria-label="Zoom in">+</button><output data-paint-zoom-output>100%</output></span>
+          </footer>
+          <div class="paint-dialog-layer" data-paint-dialog-layer hidden></div>
+        </div>
+      </div>
+
+      <div class="window photo-viewer-window" id="photo-viewer-window" data-window data-app-window="photo-viewer" data-window-width="850" data-window-height="620" data-window-min-width="570" data-window-min-height="390" hidden>
+        <div class="title-bar">
+          <div class="title-bar-text photo-viewer-window__title" data-photo-viewer-title>Windows Photo Viewer</div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body photo-viewer-window__body">
+          <nav class="photo-viewer-menu" aria-label="Photo Viewer commands">
+            <button type="button" data-photo-home>File</button>
+            <button type="button" disabled>Print</button>
+            <button type="button" disabled>Email</button>
+            <button type="button" disabled>Burn</button>
+            <button type="button" disabled>Open</button>
+          </nav>
+          <main class="photo-viewer-stage" data-photo-stage>
+            <section class="photo-viewer-home" data-photo-home-page>
+              <div class="photo-viewer-home__card">
+                <img src="./assets/icons/image.png" alt="" draggable="false">
+                <div><h1>Windows Photo Viewer</h1><p>View pictures stored on this Windows 7 Web OS.</p></div>
+                <button type="button" class="default" data-photo-browse>Open picture...</button>
+                <p class="photo-viewer-home__hint">You can also double-click any image in Explorer.</p>
+              </div>
+            </section>
+            <div class="photo-viewer-image-wrap" data-photo-image-wrap hidden>
+              <img data-photo-image alt="" draggable="false">
+              <div class="photo-viewer-loading" data-photo-loading hidden>Loading...</div>
+            </div>
+          </main>
+          <footer class="photo-viewer-toolbar" aria-label="Photo Viewer toolbar">
+            <div class="photo-viewer-toolbar__glass">
+              <div class="photo-viewer-zoom-control">
+                <button type="button" class="photo-viewer-tool photo-viewer-tool--zoom" data-photo-zoom-button title="Change zoom" aria-label="Change zoom" aria-haspopup="true" aria-expanded="false"><span aria-hidden="true"></span></button>
+                <div class="photo-viewer-zoom-popover" data-photo-zoom-popover hidden>
+                  <button type="button" data-photo-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+                  <input type="range" min="10" max="300" value="100" step="10" data-photo-zoom aria-label="Zoom">
+                  <button type="button" data-photo-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+                </div>
+              </div>
+              <button type="button" class="photo-viewer-tool photo-viewer-tool--fit" data-photo-action="fit" title="Fit to window" aria-label="Fit to window"><span aria-hidden="true"></span></button>
+              <span class="photo-viewer-toolbar__separator"></span>
+              <button type="button" class="photo-viewer-tool photo-viewer-tool--previous" data-photo-action="previous" title="Previous" aria-label="Previous"><span aria-hidden="true"></span></button>
+              <button type="button" class="photo-viewer-tool photo-viewer-tool--play" data-photo-action="slideshow" title="Play slideshow" aria-label="Play slideshow" aria-pressed="false"><span aria-hidden="true"></span></button>
+              <button type="button" class="photo-viewer-tool photo-viewer-tool--next" data-photo-action="next" title="Next" aria-label="Next"><span aria-hidden="true"></span></button>
+              <span class="photo-viewer-toolbar__separator"></span>
+              <button type="button" class="photo-viewer-tool photo-viewer-tool--rotate-left" data-photo-action="rotate-left" title="Rotate counterclockwise" aria-label="Rotate counterclockwise"><span aria-hidden="true">↶</span></button>
+              <button type="button" class="photo-viewer-tool photo-viewer-tool--rotate-right" data-photo-action="rotate-right" title="Rotate clockwise" aria-label="Rotate clockwise"><span aria-hidden="true">↷</span></button>
+              <button type="button" class="photo-viewer-tool photo-viewer-tool--delete" data-photo-action="delete" title="Delete" aria-label="Delete"><span aria-hidden="true"></span></button>
+            </div>
+          </footer>
+          <div class="photo-viewer-dialog-layer" data-photo-dialog-layer hidden></div>
+        </div>
+      </div>
+
+      <div class="window notepad-window" id="notepad-window" data-window data-app-window="notepad" data-window-width="650" data-window-height="480" data-window-min-width="390" data-window-min-height="280" hidden>
+        <div class="title-bar">
+          <div class="title-bar-text notepad-window__title"><img src="./assets/icons/notepad.png" alt="" draggable="false"><span data-notepad-title>Untitled - Notepad</span></div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body notepad-window__body">
+          <nav class="notepad-menu" aria-label="Notepad menus">
+            <div class="notepad-menu__root">
+              <button type="button" data-notepad-menu-button="file" aria-haspopup="menu" aria-expanded="false">File</button>
+              <div class="notepad-menu__popup" data-notepad-menu="file" role="menu" hidden>
+                <button type="button" role="menuitem" data-notepad-action="new"><span>New</span><kbd>Ctrl+N</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="open"><span>Open...</span><kbd>Ctrl+O</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="save"><span>Save</span><kbd>Ctrl+S</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="save-as"><span>Save As...</span><kbd>Ctrl+Shift+S</kbd></button>
+                <hr>
+                <button type="button" role="menuitem" data-notepad-action="page-setup"><span>Page Setup...</span></button>
+                <button type="button" role="menuitem" data-notepad-action="print"><span>Print...</span><kbd>Ctrl+P</kbd></button>
+                <hr>
+                <button type="button" role="menuitem" data-notepad-action="exit"><span>Exit</span></button>
+              </div>
+            </div>
+            <div class="notepad-menu__root">
+              <button type="button" data-notepad-menu-button="edit" aria-haspopup="menu" aria-expanded="false">Edit</button>
+              <div class="notepad-menu__popup" data-notepad-menu="edit" role="menu" hidden>
+                <button type="button" role="menuitem" data-notepad-action="undo"><span>Undo</span><kbd>Ctrl+Z</kbd></button>
+                <hr>
+                <button type="button" role="menuitem" data-notepad-action="cut"><span>Cut</span><kbd>Ctrl+X</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="copy"><span>Copy</span><kbd>Ctrl+C</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="paste"><span>Paste</span><kbd>Ctrl+V</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="delete"><span>Delete</span><kbd>Del</kbd></button>
+                <hr>
+                <button type="button" role="menuitem" data-notepad-action="find"><span>Find...</span><kbd>Ctrl+F</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="find-next"><span>Find Next</span><kbd>F3</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="replace"><span>Replace...</span><kbd>Ctrl+H</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="go-to"><span>Go To...</span><kbd>Ctrl+G</kbd></button>
+                <hr>
+                <button type="button" role="menuitem" data-notepad-action="select-all"><span>Select All</span><kbd>Ctrl+A</kbd></button>
+                <button type="button" role="menuitem" data-notepad-action="time-date"><span>Time/Date</span><kbd>F5</kbd></button>
+              </div>
+            </div>
+            <div class="notepad-menu__root">
+              <button type="button" data-notepad-menu-button="format" aria-haspopup="menu" aria-expanded="false">Format</button>
+              <div class="notepad-menu__popup" data-notepad-menu="format" role="menu" hidden>
+                <button type="button" role="menuitemcheckbox" data-notepad-action="word-wrap" aria-checked="false"><span class="notepad-menu__check" aria-hidden="true"></span><span>Word Wrap</span></button>
+                <button type="button" role="menuitem" data-notepad-action="font"><span class="notepad-menu__check" aria-hidden="true"></span><span>Font...</span></button>
+              </div>
+            </div>
+            <div class="notepad-menu__root">
+              <button type="button" data-notepad-menu-button="view" aria-haspopup="menu" aria-expanded="false">View</button>
+              <div class="notepad-menu__popup" data-notepad-menu="view" role="menu" hidden>
+                <button type="button" role="menuitemcheckbox" data-notepad-action="status-bar" aria-checked="true"><span class="notepad-menu__check" aria-hidden="true">✓</span><span>Status Bar</span></button>
+              </div>
+            </div>
+            <div class="notepad-menu__root">
+              <button type="button" data-notepad-menu-button="help" aria-haspopup="menu" aria-expanded="false">Help</button>
+              <div class="notepad-menu__popup" data-notepad-menu="help" role="menu" hidden>
+                <button type="button" role="menuitem" data-notepad-action="help"><span>View Help</span></button>
+                <hr>
+                <button type="button" role="menuitem" data-notepad-action="about"><span>About Notepad</span></button>
+              </div>
+            </div>
+          </nav>
+          <textarea data-notepad-editor spellcheck="false" aria-label="Notepad document"></textarea>
+          <footer data-notepad-status-bar><span data-notepad-position>Ln 1, Col 1</span><span data-notepad-zoom>100%</span><span>Windows (CRLF)</span><span>UTF-8</span></footer>
+          <div class="notepad-dialog-layer" data-notepad-dialog-layer hidden></div>
+        </div>
+      </div>
+
+      <div class="window chrome-window" id="chrome-window" data-window data-app-window="chrome" data-window-width="764" data-window-height="640" data-window-min-width="560" data-window-min-height="390" hidden>
+        <div class="title-bar chrome-window__title-bar">
+          <div class="chrome-window__tab-strip">
+            <div class="title-bar-text chrome-window__tabs" data-chrome-tabs role="tablist" aria-label="Chrome tabs"></div>
+            <button type="button" class="chrome-window__new-tab" data-chrome-new-tab aria-label="New tab" title="New tab">+</button>
+          </div>
+          <div class="title-bar-controls chrome-window__controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body chrome-window__body">
+          <nav class="chrome-toolbar" aria-label="Browser toolbar">
+            <button type="button" class="chrome-toolbar__button chrome-toolbar__back" data-chrome-back aria-label="Back" title="Back">←</button>
+            <button type="button" class="chrome-toolbar__button chrome-toolbar__forward" data-chrome-forward aria-label="Forward" title="Forward">→</button>
+            <button type="button" class="chrome-toolbar__button chrome-toolbar__refresh" data-chrome-refresh aria-label="Refresh" title="Refresh">↻</button>
+            <button type="button" class="chrome-toolbar__button chrome-toolbar__home" data-chrome-home aria-label="Home" title="Home">⌂</button>
+            <form class="chrome-omnibox" data-chrome-omnibox-form role="search">
+              <img src="./assets/icons/Chrome-icon.png" alt="" draggable="false">
+              <input type="text" data-chrome-omnibox autocomplete="off" spellcheck="false" aria-label="Address and search bar">
+            </form>
+            <button type="button" class="chrome-toolbar__menu-button" data-chrome-menu-button aria-label="Customize and control Chrome" aria-haspopup="menu" aria-expanded="false" title="Customize and control Chrome"><span aria-hidden="true">≡</span></button>
+          </nav>
+          <div class="chrome-page" data-chrome-page></div>
+          <div class="chrome-menu" data-chrome-menu role="menu" aria-label="Chrome menu" hidden>
+            <button type="button" role="menuitem" data-chrome-menu-action="new-tab"><span>New Tab</span><kbd>Alt+T</kbd></button>
+            <button type="button" role="menuitem" disabled><span>New incognito window</span><kbd>Alt+Shift+N</kbd></button>
+            <button type="button" role="menuitem" disabled><span>Bookmarks</span></button>
+            <hr>
+            <button type="button" role="menuitem" disabled><span>Save page as...</span><kbd>Alt+S</kbd></button>
+            <button type="button" role="menuitem" disabled><span>Find...</span><kbd>Alt+F</kbd></button>
+            <button type="button" role="menuitem" disabled><span>History</span><kbd>Alt+H</kbd></button>
+            <hr>
+            <button type="button" role="menuitem" data-chrome-menu-action="settings"><span>Settings</span></button>
+            <button type="button" role="menuitem" disabled><span>About Chrome</span></button>
+            <button type="button" role="menuitem" disabled><span>Help</span></button>
+            <hr>
+            <button type="button" role="menuitem" data-chrome-menu-action="exit"><span>Exit</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="window display-window" id="display-window" data-window data-app-window="display" data-window-width="774" data-window-height="620" data-window-min-width="640" data-window-min-height="480" hidden>
+        <div class="title-bar">
+          <div class="title-bar-text">Control Panel</div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body display-window__body">
+          <nav class="display-window__navigation" aria-label="Control Panel navigation">
+            <button type="button" class="display-window__nav-button" aria-label="Back">
+              <img src="./assets/leftarrow.png" alt="" draggable="false">
+            </button>
+            <button type="button" class="display-window__nav-button display-window__nav-button--forward" aria-label="Forward" disabled>
+              <img src="./assets/rightarrow.png" alt="" draggable="false">
+            </button>
+            <div class="display-window__address" aria-label="Current Control Panel location">
+              <img src="./assets/icons/control_panel.ico" alt="" draggable="false">
+              <span>Control Panel</span>
+              <span class="display-window__address-arrow" aria-hidden="true"></span>
+            </div>
+            <label class="display-window__search">
+              <input type="search" placeholder="Search Control Panel" aria-label="Search Control Panel">
+              <span aria-hidden="true"></span>
+            </label>
+          </nav>
+
+          <main class="display-window__content">
+            <h1>Change the appearance of your display</h1>
+            <div class="display-window__preview" aria-label="Display 1 preview">
+              <img src="./assets/display.png" alt="Display 1" draggable="false">
+            </div>
+
+            <div class="display-window__settings">
+              <label for="display-device">Display:</label>
+              <select id="display-device" disabled>
+                <option>1. Internal Display</option>
+              </select>
+
+              <label for="display-resolution">Resolution:</label>
+              <select id="display-resolution" disabled>
+                <option>1871 x 994 (Fullscreen)</option>
+              </select>
+
+              <label for="display-orientation">Orientation:</label>
+              <select id="display-orientation" disabled>
+                <option>Landscape</option>
+              </select>
+
+              <label for="display-zoom">Zoom:</label>
+              <select id="display-zoom" disabled>
+                <option>100%</option>
+              </select>
+            </div>
+
+            <div class="display-window__actions">
+              <button type="button" class="default win-close">OK</button>
+              <button type="button" class="win-close">Cancel</button>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="window cmd-window" id="cmd-window" data-window data-app-window="cmd" data-window-width="760" data-window-height="470" data-window-min-width="600" data-window-min-height="350" hidden>
+        <div class="title-bar">
+          <div class="title-bar-text cmd-window__title">
+            <img src="./assets/icons/cmd.png" alt="" draggable="false">
+            <span data-cmd-title>C:\Windows\system32\cmd.exe</span>
+          </div>
+          <div class="title-bar-controls">
+            <button type="button" aria-label="Minimize"></button>
+            <button type="button" aria-label="Maximize"></button>
+            <button type="button" aria-label="Close"></button>
+          </div>
+        </div>
+        <div class="window-body cmd-window__body" data-cmd-terminal tabindex="-1" role="application" aria-label="Command Prompt">
+          <div class="cmd-scrollback" data-cmd-scrollback aria-live="polite" aria-atomic="false"></div>
+          <div class="cmd-current-line" data-cmd-current-line>
+            <span class="cmd-prompt" data-cmd-prompt></span>
+            <span class="cmd-input-wrap">
+              <input class="cmd-input" data-cmd-input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command line">
+              <span class="cmd-input-measure" data-cmd-input-measure aria-hidden="true"></span>
+              <span class="cmd-block-cursor" data-cmd-cursor aria-hidden="true"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <template data-explorer-template>
+        <div class="window explorer-window" data-window data-window-kind="explorer" tabindex="-1">
+          <div class="title-bar">
+            <div class="title-bar-text explorer-window__title"><img data-explorer-title-icon alt="" draggable="false"><span data-explorer-title>Computer</span></div>
+            <div class="title-bar-controls"><button type="button" aria-label="Minimize"></button><button type="button" aria-label="Maximize"></button><button type="button" aria-label="Close"></button></div>
+          </div>
+          <div class="window-body explorer-window__body">
+            <nav class="explorer-navigation" aria-label="Folder navigation">
+              <button type="button" class="explorer-navigation__button explorer-navigation__button--back" data-explorer-back aria-label="Back"><img src="./assets/leftarrow.png" alt="" draggable="false"></button>
+              <button type="button" class="explorer-navigation__button explorer-navigation__button--forward" data-explorer-forward aria-label="Forward"><img src="./assets/rightarrow.png" alt="" draggable="false"></button>
+              <button type="button" class="explorer-navigation__button explorer-navigation__button--up" data-explorer-up aria-label="Up"></button>
+              <div class="explorer-address" data-explorer-breadcrumb aria-label="Address"></div>
+              <button type="button" class="explorer-refresh" data-explorer-refresh aria-label="Refresh"></button>
+              <label class="explorer-search"><input type="search" data-explorer-search aria-label="Search current folder"><span aria-hidden="true"></span></label>
+            </nav>
+            <div class="explorer-command-bar"><button type="button" data-explorer-organize>Organize</button><span data-explorer-command-text></span></div>
+            <div class="explorer-layout">
+              <aside class="explorer-sidebar" aria-label="Places">
+                <button type="button" class="explorer-sidebar__root" data-explorer-place="/Quick Access"><img src="./assets/icons/quick access.ico" alt=""><span>Quick Access</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Desktop"><img src="./assets/icons/desktop.ico" alt=""><span>Desktop</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Downloads"><img src="./assets/icons/downloads.ico" alt=""><span>Downloads</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Documents"><img src="./assets/icons/documents.ico" alt=""><span>Documents</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Music"><img src="./assets/icons/music.ico" alt=""><span>Music</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Pictures"><img src="./assets/icons/pictures.ico" alt=""><span>Pictures</span></button>
+                <button type="button" class="explorer-sidebar__child" data-explorer-place="/Videos"><img src="./assets/icons/videos.ico" alt=""><span>Videos</span></button>
+                <button type="button" class="explorer-sidebar__root explorer-sidebar__computer" data-explorer-place="/Computer"><img src="./assets/icons/computer.ico" alt=""><span>Computer</span></button>
+                <button type="button" class="explorer-sidebar__child explorer-sidebar__drive" data-explorer-place="/Computer/Local Disk (C:)"><img src="./assets/icons/system.ico" alt=""><span>System (C:)</span></button>
+                <button type="button" class="explorer-sidebar__child explorer-sidebar__drive" data-explorer-dvd><img src="./assets/icons/dvddrive.ico" alt=""><span>DVD Drive</span></button>
+              </aside>
+              <main class="explorer-content" data-explorer-content tabindex="0" role="grid" aria-label="Folder contents"></main>
+            </div>
+            <footer class="explorer-status" data-explorer-status></footer>
+          </div>
+          <div class="explorer-modal-layer" data-explorer-modal-layer hidden></div>
+        </div>
+      </template>
+
+      <section class="start-menu" id="start-menu" data-start-menu aria-label="Start menu" aria-hidden="true">
+        <div class="start-menu__columns">
+          <div class="start-menu__apps">
+            <ul class="start-menu__list" role="menu" aria-label="Programs">
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="about">
+                  <img alt="" draggable="false">
+                  <span>About</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="chrome">
+                  <img alt="" draggable="false">
+                  <span>Chrome</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="cmd">
+                  <img alt="" draggable="false">
+                  <span>Command Prompt</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="calculator">
+                  <img alt="" draggable="false">
+                  <span>Calculator</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="notepad">
+                  <img alt="" draggable="false">
+                  <span>Notepad</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="paint">
+                  <img alt="" draggable="false">
+                  <span>Paint</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="photo-viewer">
+                  <img alt="" draggable="false">
+                  <span>Windows Photo Viewer</span>
+                </button>
+              </li>
+            </ul>
+
+            <button type="button" class="start-menu__all-programs" data-start-static>
+              <span class="start-menu__all-arrow" aria-hidden="true"></span>
+              <span>All Programs</span>
+            </button>
+
+            <div class="start-menu__search">
+              <input type="search" placeholder="Search programs and files" aria-label="Search programs and files">
+              <span aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <aside class="start-menu__system" aria-label="System locations">
+            <div class="start-menu__profile" aria-hidden="true">
+              <img class="start-menu__profile-default" data-start-profile-default alt="" draggable="false">
+              <img class="start-menu__profile-context" data-start-profile-context alt="" draggable="false">
+            </div>
+
+            <ul class="start-menu__system-list" role="menu">
+              <li role="menuitem"><button type="button" data-start-icon="documents"><span>Documents</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="pictures"><span>Pictures</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="music"><span>Music</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="computer"><span>Computer</span></button></li>
+              <li class="start-menu__system-divider" role="separator"></li>
+              <li role="menuitem"><button type="button" data-start-icon="controlPanel"><span>Control Panel</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="defaultPrograms"><span>Default Programs</span></button></li>
+              <li role="menuitem"><button type="button" data-start-icon="help"><span>Help and Support</span></button></li>
+            </ul>
+
+            <div class="start-menu__power">
+              <button type="button" class="start-menu__shutdown">Shut down</button>
+              <div class="start-menu__power-options">
+                <button type="button" class="start-menu__power-arrow" data-power-arrow aria-label="Show power options" aria-haspopup="menu" aria-expanded="false"></button>
+                <ul role="menu" data-power-menu aria-label="Power options">
+                  <li role="menuitem"><button type="button">Shut down</button></li>
+                  <li role="menuitem"><button type="button">Restart</button></li>
+                </ul>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <nav data-taskbar aria-label="Windows taskbar">
+        <button type="button" data-start-button aria-label="Start" aria-controls="start-menu" aria-expanded="false"></button>
+        <time data-taskbar-clock aria-label="Current time"></time>
+      </nav>
+    </section>
+  </div>
+  <noscript>This Windows 7 recreation requires JavaScript.</noscript>
+</body>
+</html>

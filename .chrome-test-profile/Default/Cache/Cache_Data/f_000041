@@ -1,0 +1,494 @@
+.paint-window[hidden] { display: none !important; }
+.paint-window {
+  color: #151515;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+}
+.paint-window__title-bar { min-height: 29px; }
+.paint-window__title { padding-left: 4px; }
+.paint-window__body {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-color: #71879a;
+  background: #c9d5e4;
+}
+
+/* Windows 7 Paint ribbon */
+.paint-ribbon {
+  position: relative;
+  z-index: 12;
+  min-width: 0;
+  flex: 0 0 auto;
+  border-bottom: 1px solid #7f91a4;
+  background: #eef4fb;
+  box-shadow: 0 1px rgba(255,255,255,.9);
+  user-select: none;
+}
+.paint-ribbon__topline {
+  display: flex;
+  box-sizing: border-box;
+  height: 34px;
+  align-items: flex-end;
+  padding: 0 4px 0 3px;
+  border-bottom: 1px solid #a7b6c5;
+  background: linear-gradient(#fbfdff 0,#eff6fc 55%,#dceaf7 100%);
+  box-shadow: inset 0 1px #fff;
+}
+.paint-file-button,
+.paint-quick-access button,
+.paint-tabs button,
+.paint-ribbon-group button,
+.paint-ribbon-group select {
+  --w7-el-grad: transparent;
+  --w7-el-grad-h: transparent;
+  --w7-el-grad-a: transparent;
+  --w7-el-sd: none;
+  --w7-el-sd-a: none;
+  animation: none !important;
+}
+.paint-file-button {
+  position: relative;
+  z-index: 4;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  margin: 0 6px -7px 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #174d77;
+  border-radius: 50%;
+  outline: 1px solid rgba(255,255,255,.82);
+  background:
+    radial-gradient(circle at 35% 25%,rgba(255,255,255,.85),transparent 31%),
+    linear-gradient(#68b9e9 0,#2c87c1 48%,#12639d 52%,#2a83b9 100%);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.26),0 1px 3px rgba(20,50,75,.42);
+}
+.paint-file-button::before,
+.paint-file-button::after { content: none; }
+.paint-file-button:hover,
+.paint-file-button[aria-expanded="true"] {
+  border-color: #0b416b;
+  background:
+    radial-gradient(circle at 35% 25%,#fff,transparent 34%),
+    linear-gradient(#8fd1f2 0,#3e9bd0 48%,#1774ad 52%,#43a2d2 100%);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.38),0 0 5px rgba(45,146,205,.65);
+}
+.paint-file-button img {
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 6px auto;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.48));
+}
+.paint-quick-access {
+  display: flex;
+  height: 27px;
+  align-items: center;
+  align-self: flex-start;
+  gap: 1px;
+  margin: 3px 9px 0 0;
+  padding: 0 3px;
+  border: 1px solid rgba(113,143,167,.58);
+  border-radius: 3px;
+  background: rgba(255,255,255,.48);
+  box-shadow: inset 0 1px rgba(255,255,255,.8);
+}
+.paint-quick-access button {
+  all: unset;
+  display: grid;
+  width: 23px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: #245475;
+  font: bold 18px/20px "Segoe UI Symbol","Segoe UI",sans-serif;
+  cursor: pointer;
+}
+.paint-quick-access button:hover:not(:disabled) { border-color: #8fb0c9; background: linear-gradient(#fff,#d2e9f8); }
+.paint-quick-access button:disabled { color: #9da9b2; opacity: .72; }
+.paint-tabs { display: flex; height: 28px; align-items: flex-end; }
+.paint-tabs button {
+  all: unset;
+  box-sizing: border-box;
+  min-width: 64px;
+  height: 27px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  color: #213547;
+  font: 12px/26px "Segoe UI",Tahoma,sans-serif;
+  text-align: center;
+  cursor: pointer;
+}
+.paint-tabs button:hover:not(.is-active) { border-color: rgba(145,169,189,.55); background: rgba(255,255,255,.62); }
+.paint-tabs button.is-active {
+  height: 28px;
+  border-color: #879caf;
+  background: linear-gradient(#fff,#f4f8fc);
+  color: #111;
+  box-shadow: inset 0 1px #fff;
+}
+
+.paint-file-menu[hidden] { display: none !important; }
+.paint-file-menu {
+  position: absolute;
+  z-index: 50;
+  top: 32px;
+  left: 3px;
+  box-sizing: border-box;
+  width: 342px;
+  padding: 7px 0;
+  border: 0;
+  background: linear-gradient(90deg,#e5f1fa 0 51px,#fff 51px);
+  box-shadow: 3px 5px 13px rgba(0,0,0,.42),inset 0 0 0 1px #fff;
+}
+.paint-file-menu button {
+  all: unset;
+  display: flex;
+  box-sizing: border-box;
+  width: calc(100% - 8px);
+  min-height: 35px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 4px;
+  padding: 0 13px 0 59px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: #111;
+  font: 12px "Segoe UI",Tahoma,sans-serif;
+  cursor: pointer;
+}
+.paint-file-menu button:hover:not(:disabled),
+.paint-file-menu button:focus-visible:not(:disabled) { border-color: #79b4dc; outline: 0; background: linear-gradient(#f5fcff,#cceafd); box-shadow: inset 0 0 0 1px #fff; }
+.paint-file-menu button:disabled { color: #929292; cursor: default; }
+.paint-file-menu kbd { color: #555; font: 11px "Segoe UI",Tahoma,sans-serif; }
+.paint-file-menu hr { height: 1px; margin: 4px 7px 4px 51px; border: 0; background: #d0dae3; box-shadow: 0 1px #fff; }
+
+.paint-ribbon__panel {
+  display: flex;
+  box-sizing: border-box;
+  height: 106px;
+  min-width: max-content;
+  align-items: stretch;
+  padding: 3px 3px 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: linear-gradient(#fff 0,#f5f9fd 35%,#e8f0f8 100%);
+}
+.paint-ribbon__panel[hidden] { display: none !important; }
+.paint-ribbon-group {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  box-sizing: border-box;
+  gap: 4px;
+  padding: 4px 7px 19px;
+  border-right: 1px solid #c4d0dc;
+  box-shadow: 1px 0 #fff;
+}
+.paint-ribbon-group > h2 {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  left: 3px;
+  margin: 0;
+  color: #65798b;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 15px;
+  text-align: center;
+}
+.paint-ribbon-group button,
+.paint-ribbon-group select {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 22px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  color: #172c3d;
+  font: 11px "Segoe UI",Tahoma,sans-serif;
+}
+.paint-ribbon-group button::before,
+.paint-ribbon-group button::after { content: none; }
+.paint-ribbon-group button:hover:not(:disabled),
+.paint-ribbon-group button.is-active { border-color: #e7a23a; background: linear-gradient(#fffef0,#ffd778); box-shadow: inset 0 0 0 1px #fff; }
+.paint-ribbon-group button:active:not(:disabled) { background: linear-gradient(#f4be4a,#fff0aa); }
+.paint-ribbon-group select { border-color: #9eafbd; background: linear-gradient(#fff,#eef3f6); }
+.paint-large-command button,
+.paint-brush-button {
+  display: flex;
+  width: 55px;
+  height: 66px;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 2px;
+}
+.paint-command-icon { color: #1c75aa; font: 29px/31px "Segoe UI Symbol",sans-serif; text-shadow: 0 1px #fff; }
+.paint-command-stack { display: flex; width: 57px; flex-direction: column; gap: 3px; }
+.paint-command-stack button,
+.paint-command-stack select { width: 100%; height: 25px; padding: 1px 4px; text-align: left; }
+.paint-ribbon-group--clipboard { width: 124px; }
+.paint-ribbon-group--image { width: 179px; }
+.paint-image-commands { display: flex; gap: 5px; }
+.paint-select-control { display: flex; width: 78px; flex-direction: column; }
+.paint-select-control button { display: flex; height: 44px; align-items: center; flex-direction: column; justify-content: center; gap: 0; font: 21px/22px "Segoe UI Symbol",sans-serif; }
+.paint-select-control button span { font: 11px/14px "Segoe UI",sans-serif; }
+.paint-select-control select { width: 78px; height: 23px; font-size: 9px; }
+.paint-ribbon-group--tools { width: 109px; }
+.paint-tool-grid { display: grid; grid-template-columns: repeat(3,29px); grid-auto-rows: 31px; gap: 2px; }
+.paint-tool-grid button,
+.paint-shape-grid button { height: 30px; padding: 0; font: 18px/28px "Segoe UI Symbol","Segoe UI",sans-serif; }
+.paint-ribbon-group--brushes { width: 91px; flex-direction: column; align-items: center; }
+.paint-brush-button { width: 73px; height: 45px; }
+.paint-brush-button span { font-size: 24px; line-height: 24px; }
+.paint-brush-button strong { font-weight: 400; }
+.paint-ribbon-group--brushes select { width: 76px; height: 25px; padding-left: 2px; font-size: 9px; }
+.paint-ribbon-group--shapes { width: 240px; }
+.paint-shape-grid { display: grid; grid-template-columns: repeat(3,34px); grid-auto-rows: 31px; gap: 1px; }
+.paint-shape-options { display: flex; width: 108px; flex-direction: column; gap: 5px; }
+.paint-shape-options label { display: grid; grid-template-columns: 43px 1fr; align-items: center; font-size: 10px; }
+.paint-shape-options select { width: 65px; height: 25px; font-size: 9px; }
+.paint-ribbon-group--size { width: 64px; justify-content: center; }
+.paint-size-control { display: flex; width: 50px; align-items: center; flex-direction: column; gap: 1px; font-size: 10px; }
+.paint-size-icon { color: #173b5b; font-size: 28px; line-height: 27px; transform: scaleY(.58); }
+.paint-size-control select { width: 56px; height: 25px; font-size: 9px; }
+.paint-ribbon-group--colors { width: 326px; }
+.paint-color-selectors { display: flex; gap: 1px; }
+.paint-color-selectors button { display: flex; width: 47px; height: 68px; align-items: center; flex-direction: column; padding: 3px; }
+.paint-color-selectors button > span { display: block; width: 27px; height: 27px; margin: 2px; border: 1px solid #555; box-shadow: 0 0 0 2px #fff,0 0 0 3px #96a6b3; }
+.paint-color-selectors button small { margin-top: 5px; font-size: 10px; }
+.paint-color-selectors button.is-active { border-color: #df971f; background: #ffe09b; }
+.paint-palette { display: grid; width: 138px; grid-template-columns: repeat(7,18px); grid-template-rows: repeat(4,18px); gap: 2px; padding: 0; }
+.paint-palette button { width: 18px; height: 18px; min-height: 18px; padding: 0; border: 1px solid #83909a; border-radius: 0; box-shadow: inset 0 0 0 1px #fff; }
+.paint-palette button:hover { border-color: #e68d16; transform: scale(1.12); }
+.paint-edit-colors { position: relative; display: flex; width: 47px; align-items: center; flex-direction: column; padding-top: 1px; font-size: 10px; text-align: center; cursor: pointer; }
+.paint-edit-colors > span { font-size: 24px; }
+.paint-edit-colors strong { font-weight: 400; line-height: 11px; }
+.paint-edit-colors input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.paint-view-group { width: 185px; flex-direction: column; padding-top: 9px; }
+.paint-view-group label { font-size: 12px; line-height: 25px; }
+.paint-view-group button { width: 95px; height: 25px; }
+
+.paint-workspace {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  background: #b9c6d5;
+  box-shadow: inset 0 2px 6px rgba(57,76,99,.24);
+}
+.paint-canvas-stage {
+  position: relative;
+  width: 800px;
+  height: 600px;
+  margin: 10px 56px 48px 10px;
+  background: #fff;
+  box-shadow: 1px 1px 1px #697684,5px 6px 0 rgba(79,94,111,.12);
+  transform-origin: left top;
+}
+.paint-canvas-stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; image-rendering: auto; }
+.paint-canvas-stage canvas[data-paint-canvas] { z-index: 1; background: #fff; }
+.paint-canvas-stage canvas[data-paint-preview] { z-index: 3; cursor: crosshair; }
+.paint-workspace[data-grid="true"] .paint-canvas-stage::after {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background-image: linear-gradient(rgba(80,110,140,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(80,110,140,.22) 1px,transparent 1px);
+  background-size: 10px 10px;
+  content: "";
+  pointer-events: none;
+}
+.paint-ruler { position: sticky; z-index: 8; box-sizing: border-box; border: 1px solid #8796a5; background-color: #f3f3ef; pointer-events: none; }
+.paint-ruler--horizontal { top: 0; left: 22px; width: 800px; height: 20px; background-image: repeating-linear-gradient(90deg,#6b6b6b 0 1px,transparent 1px 10px); background-size: 10px 7px; background-repeat: repeat-x; }
+.paint-ruler--vertical { top: 20px; left: 0; float: left; width: 20px; height: 600px; background-image: repeating-linear-gradient(#6b6b6b 0 1px,transparent 1px 10px); background-size: 7px 10px; background-repeat: repeat-y; }
+.paint-workspace.has-rulers .paint-canvas-stage { margin-top: 2px; margin-left: 22px; }
+.paint-canvas-resize-handle { position: absolute; z-index: 8; right: -7px; bottom: -7px; box-sizing: border-box; width: 9px; height: 9px; border: 1px solid #456b88; background: #fff; box-shadow: 0 0 0 1px #a9c1d3; cursor: nwse-resize; }
+.paint-canvas-resize-handle::before,
+.paint-canvas-resize-handle::after { position: absolute; background: #456b88; content: ""; }
+.paint-canvas-resize-handle::before { top: 3px; left: 1px; width: 5px; height: 1px; transform: rotate(-45deg); }
+.paint-canvas-resize-handle::after { top: 5px; left: 4px; width: 3px; height: 1px; transform: rotate(-45deg); }
+.paint-window textarea[data-paint-text-editor] { position: absolute; z-index: 7; box-sizing: border-box; min-width: 42px; min-height: 26px; padding: 2px 4px; resize: none; overflow: hidden; border: 1px dashed #1c64a0; outline: 1px solid #fff; background: rgba(255,255,255,.68); color: #000; font: 20px Arial,sans-serif; line-height: 1.2; white-space: pre-wrap; }
+.paint-window textarea[data-paint-text-editor][hidden] { display: none !important; }
+
+.paint-statusbar { display: grid; box-sizing: border-box; height: 25px; flex: 0 0 25px; grid-template-columns: 145px 180px 1fr; align-items: center; border-top: 1px solid #aab8c5; background: linear-gradient(#f7f9fb,#e6edf4); color: #485765; font-size: 11px; }
+.paint-statusbar > span { box-sizing: border-box; height: 20px; padding: 3px 8px; border-right: 1px solid #c8d1d9; }
+.paint-statusbar__zoom { display: flex; align-items: center; justify-content: flex-end; gap: 5px; border-right: 0 !important; }
+.paint-statusbar__zoom button { min-width: 18px; height: 18px; min-height: 18px; padding: 0; line-height: 15px; }
+.paint-statusbar__zoom input { width: 110px; }
+.paint-statusbar__zoom output { width: 39px; text-align: right; }
+
+/* Canvas context menu intentionally avoids 7.css menu selectors. */
+.paint-context-menu {
+  position: absolute;
+  z-index: 95;
+  box-sizing: border-box;
+  width: 218px;
+  padding: 3px;
+  border: 1px solid #8c8c8c;
+  outline: 0;
+  background: #f2f2f2;
+  box-shadow: 3px 4px 8px rgba(0,0,0,.42),inset 0 0 0 1px #fff;
+}
+.paint-context-menu::before { position: absolute; top: 3px; bottom: 3px; left: 29px; width: 1px; background: #ddd; box-shadow: 1px 0 #fff; content: ""; pointer-events: none; }
+.paint-context-menu__item {
+  all: unset;
+  position: relative;
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  height: 24px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 2px 8px 2px 34px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: #111;
+  font: 12px "Segoe UI",Tahoma,sans-serif;
+  cursor: pointer;
+}
+.paint-context-menu__item:hover:not(:disabled),
+.paint-context-menu__item:focus-visible:not(:disabled) { border-color: #8bc5ea; outline: 0; background: linear-gradient(#f8fdff,#d5effe); }
+.paint-context-menu__item:disabled { color: #969696; cursor: default; }
+.paint-context-menu__item kbd { color: inherit; font: 11px "Segoe UI",Tahoma,sans-serif; }
+.paint-context-menu__separator { position: relative; height: 1px; margin: 3px 2px 3px 30px; background: #d3d3d3; box-shadow: 0 1px #fff; }
+
+.paint-dialog-layer[hidden] { display: none !important; }
+.paint-dialog-layer { position: absolute; z-index: 80; inset: 29px 0 0; display: grid; place-items: center; padding: 10px; background: rgba(34,54,72,.18); }
+.paint-dialog { box-sizing: border-box; width: min(470px,calc(100% - 28px)); padding: 0 13px 13px; border: 1px solid #557b98; border-radius: 4px; background: #f3f3f3; box-shadow: 0 10px 28px rgba(0,0,0,.42),inset 0 0 0 1px #fff; }
+.paint-dialog h2 { margin: 0 -13px 14px; padding: 7px 10px; border-bottom: 1px solid #98adbd; background: linear-gradient(#eef8ff,#c9dfef); color: #172e40; font-size: 13px; font-weight: 400; }
+.paint-dialog__form { display: grid; grid-template-columns: 92px minmax(0,1fr); gap: 9px; align-items: center; }
+.paint-dialog__form label { font-size: 12px; }
+.paint-dialog__form input,
+.paint-dialog__form select { box-sizing: border-box; width: 100%; height: 25px; font: 12px "Segoe UI",Tahoma,sans-serif; }
+.paint-dialog__actions { display: flex; grid-column: 1/-1; justify-content: flex-end; gap: 7px; margin-top: 8px; }
+.paint-dialog__actions button { min-width: 78px; }
+
+/* Explorer-style Open / Save As window */
+.paint-file-dialog {
+  display: flex;
+  box-sizing: border-box;
+  width: min(780px,calc(100% - 20px));
+  height: min(535px,calc(100% - 18px));
+  min-height: 390px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #55758e;
+  border-radius: 5px;
+  background: #f4f7fa;
+  box-shadow: 0 13px 35px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.9);
+}
+.paint-file-dialog__title { box-sizing: border-box; height: 31px; flex: 0 0 31px; margin: 0; padding: 6px 10px; border-bottom: 1px solid #8099ad; background: linear-gradient(#f4fbff,#d5e9f7 50%,#bfd9eb 51%,#d5e8f4); color: #163248; font-size: 13px; font-weight: 400; text-shadow: 0 1px #fff; }
+.paint-file-dialog__form { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; }
+.paint-file-dialog__navigation { display: grid; box-sizing: border-box; height: 42px; flex: 0 0 42px; grid-template-columns: 28px 28px minmax(190px,1fr) minmax(145px,220px); gap: 3px; align-items: center; padding: 6px 7px; border-bottom: 1px solid #9cb0c1; background: linear-gradient(#eef7fd,#d8e8f5); }
+.paint-file-dialog__navigation button,
+.paint-file-dialog__command-bar button,
+.paint-file-dialog__sidebar button,
+.paint-file-dialog__file { --w7-el-grad: transparent; --w7-el-grad-h: transparent; --w7-el-grad-a: transparent; --w7-el-sd: none; --w7-el-sd-a: none; animation: none !important; }
+.paint-file-dialog__nav-button { width: 27px; min-width: 27px; height: 27px; min-height: 27px; padding: 0; border: 1px solid #6686a0; border-radius: 50%; background: linear-gradient(#fff,#b7d7ec 48%,#70a7cf 52%,#a6d0ea); color: #174e79; font-size: 11px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); }
+.paint-file-dialog__nav-button:disabled { opacity: .42; }
+.paint-file-dialog__address { display: flex; box-sizing: border-box; height: 27px; min-width: 0; align-items: center; gap: 6px; padding: 2px 7px; overflow: hidden; border: 1px solid #6b879d; background: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,.08); color: #222; font-size: 12px; }
+.paint-file-dialog__address img { width: 17px; height: 17px; flex: 0 0 17px; object-fit: contain; }
+.paint-file-dialog__address b { color: #647889; font-size: 16px; font-weight: 400; }
+.paint-file-dialog__search { box-sizing: border-box; width: 100%; height: 27px; padding: 3px 7px; border: 1px solid #6b879d; border-radius: 0; background: #fff; font: italic 12px "Segoe UI",Tahoma,sans-serif; }
+.paint-file-dialog__command-bar { display: flex; box-sizing: border-box; height: 29px; flex: 0 0 29px; align-items: center; gap: 3px; padding: 2px 8px; border-bottom: 1px solid #a7b7c5; background: linear-gradient(#fff,#edf2f6); }
+.paint-file-dialog__command-bar button { all: unset; box-sizing: border-box; height: 23px; padding: 0 8px; border: 1px solid transparent; border-radius: 2px; color: #394b59; font: 12px/21px "Segoe UI",Tahoma,sans-serif; cursor: pointer; }
+.paint-file-dialog__command-bar button:hover:not(:disabled) { border-color: #a3b7c7; background: linear-gradient(#fff,#dfedf7); }
+.paint-file-dialog__command-bar button:disabled { color: #999; cursor: default; }
+.paint-file-dialog__browser { display: grid; min-width: 0; min-height: 0; flex: 1 1 auto; grid-template-columns: 170px minmax(0,1fr); border-bottom: 1px solid #aab8c4; background: #fff; }
+.paint-file-dialog__sidebar { box-sizing: border-box; padding: 8px 4px; overflow: auto; border-right: 1px solid #bdcad5; background: linear-gradient(90deg,#f8fbfe,#fff); }
+.paint-file-dialog__sidebar h3 { margin: 5px 8px 3px; color: #4a5d6c; font-size: 11px; font-weight: 600; }
+.paint-file-dialog__sidebar button { all: unset; display: flex; box-sizing: border-box; width: 100%; height: 25px; align-items: center; gap: 6px; padding: 2px 8px 2px 20px; border: 1px solid transparent; border-radius: 2px; color: #222; font: 12px "Segoe UI",Tahoma,sans-serif; cursor: pointer; }
+.paint-file-dialog__sidebar button:hover { background: #e4f2fb; }
+.paint-file-dialog__sidebar button.is-current { border-color: #86b4d5; background: linear-gradient(#e2f3fd,#c9e7f8); }
+.paint-file-dialog__sidebar img { width: 17px; height: 17px; flex: 0 0 17px; object-fit: contain; }
+.paint-file-dialog__file-area { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
+.paint-file-dialog__columns,
+.paint-file-dialog__file { display: grid; grid-template-columns: minmax(150px,1fr) 112px 94px 58px; align-items: center; }
+.paint-file-dialog__columns { box-sizing: border-box; height: 24px; flex: 0 0 24px; border-bottom: 1px solid #c4cbd0; background: linear-gradient(#fff,#edf1f4); color: #48545d; font-size: 11px; }
+.paint-file-dialog__columns span { height: 18px; padding: 3px 6px; border-right: 1px solid #d2d7db; }
+.paint-file-dialog__files { min-width: 0; min-height: 0; flex: 1 1 auto; padding: 2px; overflow: auto; background: #fff; outline: 0; }
+.paint-file-dialog__file { all: unset; box-sizing: border-box; width: 100%; min-height: 26px; border: 1px solid transparent; border-radius: 2px; color: #111; font: 11px "Segoe UI",Tahoma,sans-serif; cursor: pointer; }
+.paint-file-dialog__file > span { min-width: 0; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paint-file-dialog__file:hover { border-color: #b2d7ef; background: #e9f6fd; }
+.paint-file-dialog__file.is-selected { border-color: #78add0; background: linear-gradient(#d9effc,#bddff4); }
+.paint-file-dialog__file-name { display: flex; align-items: center; gap: 6px; }
+.paint-file-dialog__file-name img { width: 21px; height: 21px; flex: 0 0 21px; object-fit: contain; }
+.paint-file-dialog__empty { margin: 72px 12px; color: #666; font-size: 12px; text-align: center; }
+.paint-file-dialog__footer { display: grid; box-sizing: border-box; min-height: 88px; flex: 0 0 88px; grid-template-columns: 44px 84px minmax(150px,1fr) 170px; grid-template-rows: 31px 31px; gap: 4px 7px; align-items: center; padding: 9px 11px 7px; background: linear-gradient(#f8fafc,#e8eef3); }
+.paint-file-dialog__file-icon { width: 36px; height: 36px; grid-row: 1/3; object-fit: contain; }
+.paint-file-dialog__footer label { color: #222; font-size: 12px; text-align: right; }
+.paint-file-dialog__footer input,
+.paint-file-dialog__footer select { box-sizing: border-box; width: 100%; height: 25px; font: 12px "Segoe UI",Tahoma,sans-serif; }
+.paint-file-dialog__actions { display: flex; grid-column: 4; grid-row: 1/3; align-self: stretch; flex-direction: column; gap: 5px; padding-left: 4px; }
+.paint-file-dialog__actions button { width: 100%; min-height: 25px; }
+.paint-selection-info { position: absolute; z-index: 6; border: 1px dashed #111; outline: 1px dashed #fff; pointer-events: none; }
+
+/* 7.css paints button chrome with pseudo-elements. Menus provide their own
+   complete chrome, so those layers must not leak into popup backgrounds. */
+.paint-file-menu button,
+.paint-context-menu__item,
+.paint-file-dialog__navigation button,
+.paint-file-dialog__command-bar button,
+.paint-file-dialog__sidebar button,
+.paint-file-dialog__file {
+  --w7-el-grad: transparent !important;
+  --w7-el-grad-h: transparent !important;
+  --w7-el-grad-a: transparent !important;
+  --w7-el-sd: none !important;
+  --w7-el-sd-a: none !important;
+  animation: none !important;
+}
+.paint-file-menu button::before,
+.paint-file-menu button::after,
+.paint-context-menu__item::before,
+.paint-context-menu__item::after,
+.paint-file-dialog__navigation button::before,
+.paint-file-dialog__navigation button::after,
+.paint-file-dialog__command-bar button::before,
+.paint-file-dialog__command-bar button::after,
+.paint-file-dialog__sidebar button::before,
+.paint-file-dialog__sidebar button::after,
+.paint-file-dialog__file::before,
+.paint-file-dialog__file::after {
+  display: none !important;
+  content: none !important;
+}
+.paint-file-menu button,
+.paint-context-menu__item,
+.paint-file-dialog__sidebar button {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.paint-context-menu { border: 0 !important; }
+
+@media (max-width: 920px) {
+  .paint-ribbon { overflow-x: auto; overflow-y: hidden; }
+  .paint-ribbon__topline { position: sticky; left: 0; min-width: 760px; }
+  .paint-statusbar { grid-template-columns: 120px 140px 1fr; }
+  .paint-file-dialog__navigation { grid-template-columns: 26px 26px minmax(150px,1fr) minmax(120px,34%); }
+  .paint-file-dialog__browser { grid-template-columns: 145px minmax(0,1fr); }
+  .paint-file-dialog__columns,
+  .paint-file-dialog__file { grid-template-columns: minmax(150px,1fr) 95px 80px 50px; }
+  .paint-file-dialog__footer { grid-template-columns: 34px 76px minmax(120px,1fr) 140px; }
+}
+@media (max-height: 570px) {
+  .paint-ribbon__panel { height: 96px; }
+  .paint-ribbon-group { padding-top: 2px; }
+  .paint-large-command button { height: 56px; }
+  .paint-file-dialog { min-height: 340px; }
+}

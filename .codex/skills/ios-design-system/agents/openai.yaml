@@ -1,0 +1,4 @@
+interface:
+  display_name: "iOS Design System"
+  short_description: "Build native-feeling iOS interfaces"
+  default_prompt: "Use $ios-design-system to build an accessible, native-feeling iOS interface."

@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  const { closeAeroWindow, openAeroWindow } = window.Windows7AeroWindowMotion;
+
   const ASSETS = Object.freeze({
     // Document-relative URLs work both from file:/// and from a web server,
     // including deployments mounted below the server root.
@@ -25,6 +27,10 @@
     cmd: "./assets/icons/cmd.png",
     calculator: "./assets/icons/calculator.png",
     notepad: "./assets/icons/notepad.png",
+    paint: "./assets/icons/paint.png",
+    photoViewer: "./assets/icons/image.png",
+    imageFile: "./assets/icons/image.png",
+    imageFileFallback: "./assets/icons/image.ico",
     documents: "./assets/icons/documents.ico",
     pictures: "./assets/icons/pictures.ico",
     music: "./assets/icons/music.ico",
@@ -52,6 +58,7 @@
     dvdDrive: "./assets/icons/dvddrive.ico",
     accessDenied: "./assets/icons/access_denied.ico",
     display: "./assets/display.png",
+    rightArrow: "./assets/rightarrow.png",
     contextDisplay: "./assets/icons/networkicon.png",
     contextGadgets: "./assets/icons/gadgets.png",
     contextPersonalize: "./assets/icons/personalize.png",
@@ -90,7 +97,7 @@
     E: "#ffff00",
     F: "#ffffff"
   });
-  const TASKBAR_HEIGHT = 40;
+  const TASKBAR_HEIGHT = 45;
   const WINDOW_ANIMATION_MS = 400;
   const WINDOW_ANIMATION_EASING = "cubic-bezier(0.2, 0.75, 0.25, 1)";
   const WINDOW_MINIMIZED_SCALE = 0.3;
@@ -111,6 +118,15 @@
     top: 1043,
     right: 667,
     bottom: 1154
+  });
+  const APP_SHORTCUTS = Object.freeze({
+    about: Object.freeze({ name: "About", icon: ASSETS.about, glow: "72, 177, 232" }),
+    chrome: Object.freeze({ name: "Chrome", icon: ASSETS.chrome, glow: "242, 194, 48" }),
+    cmd: Object.freeze({ name: "Command Prompt", icon: ASSETS.cmd, glow: "104, 215, 122" }),
+    calculator: Object.freeze({ name: "Calculator", icon: ASSETS.calculator, glow: "115, 172, 219" }),
+    notepad: Object.freeze({ name: "Notepad", icon: ASSETS.notepad, glow: "94, 164, 219" }),
+    paint: Object.freeze({ name: "Paint", icon: ASSETS.paint, glow: "238, 178, 62" }),
+    "photo-viewer": Object.freeze({ name: "Windows Photo Viewer", icon: ASSETS.photoViewer, glow: "79, 177, 232" })
   });
 
   const assignStyles = (element, styles) => Object.assign(element.style, styles);
@@ -274,6 +290,18 @@
     #sequence = 0;
     #listeners = new Set();
 
+    static fromProfile(data) {
+      const profileApi = window.Windows7Profile;
+      if (!profileApi?.restoreProfile) throw new Error("Windows 7 profile storage is unavailable.");
+      const restored = profileApi.restoreProfile(data);
+      const fileSystem = new ShellFileSystem();
+      fileSystem.#sequence = restored.sequence;
+      fileSystem.roots = restored.roots;
+      fileSystem.desktopItems = restored.desktopItems;
+      fileSystem.recycleItems = restored.recycleItems;
+      return fileSystem;
+    }
+
     constructor() {
       this.recycleItems = [];
       this.desktopItems = [
@@ -346,6 +374,31 @@
         ["/Computer", computer],
         ["/Recycle Bin", recycleBin]
       ]);
+    }
+
+    captureProfile(settings = {}) {
+      const profileApi = window.Windows7Profile;
+      if (!profileApi?.captureProfile) throw new Error("Windows 7 profile storage is unavailable.");
+      return profileApi.captureProfile({
+        profileId: USERNAME,
+        sequence: this.#sequence,
+        roots: this.roots,
+        settings
+      });
+    }
+
+    findById(id) {
+      if (!id) return null;
+      const visited = new Set();
+      const pending = [...this.roots.values()];
+      while (pending.length > 0) {
+        const node = pending.shift();
+        if (!node || visited.has(node.id)) continue;
+        if (node.id === id) return node;
+        visited.add(node.id);
+        pending.push(...(node.children ?? []));
+      }
+      return null;
     }
 
     #node(type, name, parentPath, options = {}) {
@@ -462,6 +515,7 @@
       const node = this.#node(type, name, parentPath, {
         file: options.file ?? null,
         icon: options.icon ?? null,
+        meta: options.meta ?? {},
         parentId: parentPath.startsWith("/Desktop/") ? parent.id : null,
         x: options.x ?? 10,
         y: options.y ?? 10
@@ -472,6 +526,19 @@
       }
       this.emit({ type: "create", path: this.pathFor(node) });
       return node;
+    }
+
+    updateFile(node, file, meta = {}) {
+      if (!node || ["folder", "drive", "dvd", "computer", "recycle"].includes(node.type)) return false;
+      node.file = file;
+      node.meta = {
+        ...node.meta,
+        ...meta,
+        size: Number(file?.size ?? meta.size ?? node.meta?.size ?? 0),
+        modifiedAt: new Date()
+      };
+      this.emit({ type: "update-file", node, path: this.pathFor(node) });
+      return true;
     }
 
     rename(node, requestedName) {
@@ -486,7 +553,11 @@
     move(nodes, targetPath) {
       const target = this.resolve(targetPath);
       if (!target || !["folder", "drive"].includes(target.type)) return false;
-      const movable = nodes.filter((node) => node && !node.permanent && node.parentPath !== targetPath);
+      const movable = nodes.filter((node) => {
+        if (!node || node.permanent || node.parentPath === targetPath) return false;
+        const sourcePath = this.pathFor(node);
+        return sourcePath !== targetPath && !targetPath.startsWith(`${sourcePath}/`);
+      });
       movable.forEach((node) => {
         this.#detach(node);
         node.name = this.uniqueName(targetPath, node.name, node.type);
@@ -638,6 +709,11 @@
     #selectedDesktopItemId = null;
     #desktopItemDrag = null;
     #desktopItemDragFrame = 0;
+    #shellDrag = null;
+    #shellDropHighlight = null;
+    #suppressedShellClickTarget = null;
+    #suppressedShellClickTimer = 0;
+    #pinnedTaskItems = new Map();
     #lastDesktopClick = { itemId: null, time: 0 };
     #desktopRefreshTimer = 0;
     #desktopMarquee = null;
@@ -656,6 +732,22 @@
     #contextMenuPoint = { x: 16, y: 96 };
     #listeners = new AbortController();
     #windowAnimations = new WeakMap();
+    #chromeApp = null;
+    #controlPanelApp = null;
+    #themesApp = null;
+    #themeSwitchController = null;
+    #paintApp = null;
+    #photoViewerApp = null;
+    #notepadApp = null;
+    #currentWallpaper = ASSETS.wallpaper;
+    #currentThemeId = "windows-7";
+    #themeWaitOverlay = null;
+    #themeWaitRemovalTimer = 0;
+    #themeFocusReturn = null;
+    #profileStore = null;
+    #profilePersistence = null;
+    #profileApps = {};
+    #pendingPinnedItems = [];
 
     constructor(root) {
       this.#root = root;
@@ -670,6 +762,7 @@
     }
 
     async start() {
+      await this.#initializeLocalProfile();
       this.#configureRoot();
       this.#configureDesktop();
       this.#configureDesktopItems();
@@ -687,16 +780,83 @@
       await this.#runBootSequence();
     }
 
+    async #initializeLocalProfile() {
+      const profileApi = window.Windows7Profile;
+      if (!profileApi?.LocalProfileStore || !profileApi?.ProfilePersistenceController) {
+        console.warn("Local profile persistence is unavailable; this session will not be saved.");
+        return;
+      }
+
+      try {
+        this.#profileStore = new profileApi.LocalProfileStore();
+        const savedProfile = await this.#profileStore.load(USERNAME);
+        if (savedProfile) {
+          this.#fileSystem = ShellFileSystem.fromProfile(savedProfile);
+          this.#applyProfileSettings(profileApi.normalizeProfileSettings(savedProfile.snapshot.settings));
+        }
+        this.#profilePersistence = new profileApi.ProfilePersistenceController({
+          profileId: USERNAME,
+          store: this.#profileStore,
+          capture: () => this.#captureLocalProfile(),
+          onError: (error) => console.warn("The local Windows profile could not be saved.", error)
+        });
+        if (!savedProfile) this.#profilePersistence.schedule();
+      } catch (error) {
+        this.#profileStore = null;
+        this.#profilePersistence = null;
+        console.warn("The local Windows profile could not be loaded; factory state will be used for this session.", error);
+      }
+    }
+
+    #applyProfileSettings(settings) {
+      this.#desktopIconSize = settings.desktopIconSize;
+      this.#desktopAutoArrange = settings.desktopAutoArrange;
+      this.#desktopAlignToGrid = settings.desktopAlignToGrid;
+      this.#currentWallpaper = settings.wallpaper;
+      this.#currentThemeId = settings.themeId;
+      this.#volume = settings.volume;
+      this.#pendingPinnedItems = [...settings.pinnedItems];
+      this.#profileApps = { ...settings.apps };
+    }
+
+    #captureLocalProfile() {
+      return this.#fileSystem.captureProfile({
+        desktopIconSize: this.#desktopIconSize,
+        desktopAutoArrange: this.#desktopAutoArrange,
+        desktopAlignToGrid: this.#desktopAlignToGrid,
+        wallpaper: this.#currentWallpaper,
+        themeId: this.#currentThemeId,
+        volume: this.#volume,
+        pinnedItems: this.#capturePinnedItems(),
+        apps: this.#profileApps
+      });
+    }
+
+    #scheduleProfileSave() {
+      this.#profilePersistence?.schedule();
+    }
+
     destroy() {
       this.#cancelDrag();
       this.#cancelResize();
       this.#cancelDesktopItemDrag();
+      this.#cancelShellDrag();
       this.#desktopMarquee?.destroy();
+      this.#chromeApp?.destroy();
+      this.#controlPanelApp?.destroy();
+      this.#themesApp?.destroy();
+      this.#paintApp?.destroy();
+      this.#photoViewerApp?.destroy();
+      this.#notepadApp?.destroy();
       this.#listeners.abort();
       window.clearInterval(this.#clockTimer);
       window.clearInterval(this.#analogClockTimer);
       window.clearTimeout(this.#desktopRefreshTimer);
       window.clearTimeout(this.#startMenuCloseTimer);
+      window.clearTimeout(this.#suppressedShellClickTimer);
+      window.clearTimeout(this.#themeWaitRemovalTimer);
+      this.#themeWaitOverlay?.remove();
+      if (this.#desktop) this.#desktop.inert = false;
       cancelAnimationFrame(this.#biosFadeFrame);
       this.#biosAudio?.pause();
       this.#startupAudio?.pause();
@@ -716,6 +876,7 @@
         background: "#000",
         cursor: `url("${ASSETS.cursorArrow}") 4 2, default`
       });
+      this.#applyThemeShell(this.#findTheme(this.#currentThemeId));
     }
 
     #configureDesktop() {
@@ -727,8 +888,10 @@
         visibility: "hidden",
         opacity: "0",
         transition: `opacity ${TRANSITION_MS}ms ease`,
-        backgroundColor: "#0877c9",
-        backgroundImage: `url("${ASSETS.wallpaper}")`,
+        backgroundColor: this.#themePresentation(this.#findTheme(this.#currentThemeId)).desktopColor,
+        backgroundImage: this.#findTheme(this.#currentThemeId)?.wallpaper === null
+          ? "none"
+          : `url("${this.#currentWallpaper}")`,
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         backgroundSize: "cover"
@@ -746,12 +909,13 @@
         const isFixedSize = windowElement.hasAttribute("data-fixed-size");
         const width = Math.min(preferredWidth, Math.max(1, desktopWidth - 32));
         const height = Math.min(preferredHeight, Math.max(1, desktopHeight - TASKBAR_HEIGHT - 32));
+        const cascadeOffset = windowElement.dataset.appWindow === "display" ? 0 : index * 24;
 
         assignStyles(windowElement, {
           position: "absolute",
           zIndex: "100",
-          left: `${Math.max(0, (desktopWidth - width) / 2 + index * 24)}px`,
-          top: `${Math.max(0, (desktopHeight - TASKBAR_HEIGHT - height) / 2 + index * 24)}px`,
+          left: `${Math.max(0, (desktopWidth - width) / 2 + cascadeOffset)}px`,
+          top: `${Math.max(0, (desktopHeight - TASKBAR_HEIGHT - height) / 2 + cascadeOffset)}px`,
           width: `${width}px`,
           height: `${height}px`,
           minWidth: `${isFixedSize ? width : Math.min(preferredMinWidth, desktopWidth)}px`,
@@ -785,11 +949,344 @@
 
       this.#configureCalculator();
       this.#configureCommandPrompt();
+      this.#configureChrome();
+      this.#configureControlPanel();
+      this.#configureFileApps();
       this.#configureTaskbar();
       this.#configureStartMenu();
       this.#configureSystemTray();
+      this.#restorePinnedItems();
       this.#updateClock();
       this.#clockTimer = window.setInterval(() => this.#updateClock(), 30_000);
+    }
+
+    #configureChrome() {
+      this.#chromeApp?.destroy();
+      this.#chromeApp = null;
+      const chromeWindow = this.#desktop.querySelector('[data-app-window="chrome"]');
+      if (!chromeWindow || typeof window.Windows7ChromeApp !== "function") return;
+      this.#chromeApp = new window.Windows7ChromeApp(chromeWindow);
+    }
+
+    #configureControlPanel() {
+      this.#controlPanelApp?.destroy();
+      this.#themesApp?.destroy();
+      this.#controlPanelApp = null;
+      this.#themesApp = null;
+      this.#themeSwitchController = null;
+      const controlPanelWindow = this.#desktop.querySelector('[data-app-window="display"]');
+      const ControlPanelApp = window.Windows7ControlPanel?.ControlPanelApp;
+      const themesView = controlPanelWindow?.querySelector("[data-control-panel-themes]");
+      const themesApi = window.Windows7Themes;
+      if (!controlPanelWindow || typeof ControlPanelApp !== "function" || !themesView || !themesApi) return;
+
+      this.#themeSwitchController = new themesApi.ThemeSwitchController({
+        preloadTheme: (theme) => this.#preloadTheme(theme),
+        applyTheme: (theme) => this.#applyTheme(theme),
+        playSound: (_theme, assets) => this.#playThemeSound(assets.audio),
+        onBusyChange: (busy, _theme, { failed = false } = {}) => {
+          if (busy) return this.#showThemeWait();
+          return failed ? this.#showThemeLoadError() : this.#hideThemeWait();
+        },
+        onError: () => {}
+      });
+      this.#themesApp = new themesApi.ThemesApp(themesView, {
+        getActiveThemeId: () => this.#currentThemeId,
+        onSelect: (theme, card) => {
+          this.#themeFocusReturn = card;
+          return this.#themeSwitchController.switchTo(theme);
+        }
+      });
+      this.#controlPanelApp = new ControlPanelApp(controlPanelWindow, {
+        onShowThemes: () => this.#themesApp?.refresh()
+      });
+    }
+
+    #openControlPanel(view = "home") {
+      if (view === "display") this.#controlPanelApp?.showDisplay();
+      else if (view === "themes") this.#controlPanelApp?.showThemes();
+      else this.#controlPanelApp?.showHome({ clearSearch: true });
+      this.#openAppWindow("display");
+    }
+
+    #findTheme(themeId) {
+      const themes = window.Windows7Themes?.THEMES ?? [];
+      return themes.find(({ id }) => id === themeId) ?? themes.find(({ id }) => id === "windows-7") ?? null;
+    }
+
+    #themePresentation(theme) {
+      return window.Windows7Themes?.buildThemePresentation(theme) ?? {
+        themeId: "windows-7",
+        wallpaper: ASSETS.wallpaper,
+        desktopColor: "#0877c9",
+        variables: {}
+      };
+    }
+
+    #applyThemeShell(theme) {
+      if (!theme) return;
+      const presentation = this.#themePresentation(theme);
+      this.#root.dataset.theme = presentation.themeId;
+      Object.entries(presentation.variables).forEach(([name, value]) => {
+        this.#root.style.setProperty(name, value);
+      });
+    }
+
+    async #preloadTheme(theme) {
+      const themesApi = window.Windows7Themes;
+      const [image, audio] = await Promise.all([
+        theme.wallpaper ? themesApi.preloadImage(theme.wallpaper) : Promise.resolve(null),
+        themesApi.preloadAudio(theme.sound)
+      ]);
+      return { image, audio };
+    }
+
+    #applyTheme(theme) {
+      const presentation = this.#themePresentation(theme);
+      this.#applyThemeShell(theme);
+      this.#currentThemeId = theme.id;
+      if (presentation.wallpaper) this.#currentWallpaper = presentation.wallpaper;
+      assignStyles(this.#desktop, {
+        backgroundColor: presentation.desktopColor,
+        backgroundImage: presentation.wallpaper ? `url("${presentation.wallpaper}")` : "none",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover"
+      });
+      this.#themesApp?.setActiveTheme(theme.id);
+      this.#scheduleProfileSave();
+    }
+
+    async #playThemeSound(audio) {
+      if (!audio) return;
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = Math.max(0, Math.min(1, this.#volume / 100));
+      await audio.play();
+    }
+
+    #showThemeWait() {
+      window.clearTimeout(this.#themeWaitRemovalTimer);
+      this.#themeWaitOverlay?.remove();
+      this.#desktop.inert = true;
+      const overlay = createElement("div", { className: "theme-switch-overlay" });
+      const dialog = createElement("div", {
+        className: "window active theme-switch-dialog",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Please Wait",
+        tabIndex: -1
+      });
+      const titleBar = createElement("div", { className: "title-bar" });
+      titleBar.append(createElement("div", { className: "title-bar-text", textContent: "Personalization" }));
+      const body = createElement("div", { className: "window-body theme-switch-dialog__body" });
+      body.append(
+        createElement("img", { src: ASSETS.busy, alt: "", draggable: false }),
+        createElement("span", { textContent: "Please Wait" })
+      );
+      dialog.append(titleBar, body);
+      overlay.append(dialog);
+      this.#root.append(overlay);
+      void openAeroWindow(dialog);
+      this.#themeWaitOverlay = overlay;
+      requestAnimationFrame(() => {
+        if (this.#themeWaitOverlay === overlay && !overlay.classList.contains("is-leaving")) {
+          overlay.classList.add("is-active");
+        }
+      });
+      dialog.focus({ preventScroll: true });
+    }
+
+    #hideThemeWait() {
+      const overlay = this.#themeWaitOverlay;
+      if (!overlay) {
+        this.#desktop.inert = false;
+        return Promise.resolve();
+      }
+      overlay.classList.remove("is-active");
+      overlay.classList.add("is-leaving");
+      const dialog = overlay.querySelector(".window");
+      const windowClose = dialog ? closeAeroWindow(dialog) : Promise.resolve();
+      const duration = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
+      const overlayClose = new Promise((resolve) => {
+        this.#themeWaitRemovalTimer = window.setTimeout(() => {
+          if (this.#themeWaitOverlay === overlay) {
+            overlay.remove();
+            this.#themeWaitOverlay = null;
+            this.#desktop.inert = false;
+            this.#themeFocusReturn?.focus({ preventScroll: true });
+          }
+          resolve();
+        }, duration);
+      });
+      return Promise.all([windowClose, overlayClose]).then(() => undefined);
+    }
+
+    #showThemeLoadError() {
+      const overlay = this.#themeWaitOverlay;
+      if (!overlay) return;
+      window.clearTimeout(this.#themeWaitRemovalTimer);
+      overlay.classList.remove("is-leaving");
+      overlay.classList.add("is-active", "has-error");
+      const body = overlay.querySelector(".theme-switch-dialog__body");
+      if (!body) return;
+      const message = createElement("span", { textContent: "The theme could not be loaded." });
+      const close = createElement("button", { type: "button", textContent: "Close", className: "default" });
+      close.addEventListener("click", async () => {
+        const dialog = overlay.querySelector(".window");
+        if (dialog) await closeAeroWindow(dialog);
+        overlay.remove();
+        this.#themeWaitOverlay = null;
+        this.#desktop.inert = false;
+        this.#themeFocusReturn?.focus({ preventScroll: true });
+      }, { once: true });
+      body.replaceChildren(message, close);
+      close.focus({ preventScroll: true });
+    }
+
+    #configureFileApps() {
+      this.#paintApp?.destroy();
+      this.#photoViewerApp?.destroy();
+      this.#notepadApp?.destroy();
+      this.#paintApp = null;
+      this.#photoViewerApp = null;
+      this.#notepadApp = null;
+
+      const writableFolders = ["/Desktop", "/Documents", "/Pictures", "/Downloads", "/Music", "/Videos"];
+      const shell = {
+        writableFolders: () => [...writableFolders],
+        list: (path) => [...this.#fileSystem.list(path)],
+        listImages: (path) => this.#fileSystem.list(path).filter((node) => this.#isImageFile(node)),
+        listTexts: (path) => this.#fileSystem.list(path).filter((node) => this.#isTextFile(node)),
+        allImages: () => writableFolders.flatMap((path) =>
+          this.#fileSystem.list(path)
+            .filter((node) => this.#isImageFile(node))
+            .map((node) => ({ node, path }))),
+        isImage: (node) => this.#isImageFile(node),
+        isText: (node) => this.#isTextFile(node),
+        getFile: (node) => node?.file ?? null,
+        pathFor: (node) => this.#fileSystem.pathFor(node),
+        subscribe: (listener) => this.#fileSystem.subscribe(listener),
+        saveImage: ({ existingNode = null, folderPath = "/Pictures", name = "Untitled.png", blob }) => {
+          const safeBase = String(name || "Untitled.png").trim().replace(/[<>:"/\\|?*]/g, "_") || "Untitled.png";
+          const fileName = /\.png$/i.test(safeBase) ? safeBase : `${safeBase}.png`;
+          const file = new File([blob], existingNode?.name ?? fileName, { type: "image/png" });
+          if (existingNode) {
+            this.#fileSystem.updateFile(existingNode, file, { mimeType: "image/png" });
+            return existingNode;
+          }
+          const desktopPoint = folderPath === "/Desktop"
+            ? this.#findAvailableDesktopPoint({ x: 10, y: 10 })
+            : {};
+          return this.#fileSystem.create(folderPath, "file", fileName, {
+            file,
+            icon: ASSETS.imageFile,
+            ...desktopPoint,
+            meta: {
+              mimeType: "image/png",
+              size: file.size,
+              createdAt: new Date(),
+              modifiedAt: new Date()
+            }
+          });
+        },
+        saveText: ({ existingNode = null, folderPath = "/Documents", name = "Untitled.txt", text = "" }) => {
+          const safeName = String(name || "Untitled.txt").trim().replace(/[<>:"/\\|?*]/g, "_") || "Untitled.txt";
+          const fileName = /\.[a-z0-9]+$/i.test(safeName) ? safeName : `${safeName}.txt`;
+          const file = new File([String(text)], existingNode?.name ?? fileName, { type: "text/plain;charset=utf-8" });
+          if (existingNode) {
+            this.#fileSystem.updateFile(existingNode, file, { mimeType: "text/plain", text: String(text) });
+            return existingNode;
+          }
+          const desktopPoint = folderPath === "/Desktop"
+            ? this.#findAvailableDesktopPoint({ x: 10, y: 10 })
+            : {};
+          return this.#fileSystem.create(folderPath, "file", fileName, {
+            file,
+            icon: ASSETS.textFile,
+            ...desktopPoint,
+            meta: {
+              mimeType: "text/plain",
+              text: String(text),
+              size: file.size,
+              createdAt: new Date(),
+              modifiedAt: new Date()
+            }
+          });
+        },
+        updateImage: (node, blob) => {
+          if (!node || !blob) return false;
+          const file = new File([blob], node.name, { type: "image/png" });
+          node.icon = ASSETS.imageFile;
+          return this.#fileSystem.updateFile(node, file, { mimeType: "image/png" });
+        },
+        trash: (node) => this.#fileSystem.trash(node ? [node] : []),
+        setWallpaper: (source) => {
+          if (!source) return;
+          this.#currentWallpaper = source;
+          assignStyles(this.#desktop, {
+            backgroundImage: `url("${source}")`,
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "cover"
+          });
+          this.#scheduleProfileSave();
+        },
+        setTitle: (windowElement, title) => {
+          const label = windowElement?.querySelector("[data-app-title], [data-notepad-title], [data-paint-title], [data-photo-viewer-title], .title-bar-text");
+          if (label) label.textContent = title;
+          if (windowElement) this.#updateWindowTaskLabel(windowElement, title);
+        },
+        closeWindow: (windowElement) => this.#closeWindow(windowElement, { force: true })
+      };
+
+      const paintWindow = this.#desktop.querySelector('[data-app-window="paint"]');
+      if (paintWindow && typeof window.Windows7PaintApp === "function") {
+        this.#paintApp = new window.Windows7PaintApp(paintWindow, shell);
+      }
+      const viewerWindow = this.#desktop.querySelector('[data-app-window="photo-viewer"]');
+      if (viewerWindow && typeof window.Windows7PhotoViewerApp === "function") {
+        this.#photoViewerApp = new window.Windows7PhotoViewerApp(viewerWindow, shell);
+      }
+      const notepadWindow = this.#desktop.querySelector('[data-app-window="notepad"]');
+      if (notepadWindow && typeof window.Windows7NotepadApp === "function") {
+        this.#notepadApp = new window.Windows7NotepadApp(notepadWindow, shell);
+      }
+    }
+
+    #configureNotepad() {
+      const notepadWindow = this.#desktop.querySelector('[data-app-window="notepad"]');
+      const editor = notepadWindow?.querySelector("[data-notepad-editor]");
+      if (!notepadWindow || !editor) return;
+
+      let session = 0;
+      const setDocument = (name = "Untitled", text = "") => {
+        editor.value = text;
+        const title = `${name} - Notepad`;
+        const label = notepadWindow.querySelector("[data-notepad-title]");
+        if (label) label.textContent = title;
+        this.#updateWindowTaskLabel(notepadWindow, title);
+      };
+      const reset = () => {
+        session += 1;
+        setDocument();
+      };
+
+      notepadWindow.addEventListener("notepad:reset", reset, { signal: this.#listeners.signal });
+      notepadWindow.addEventListener("notepad:open", async (event) => {
+        const node = event.detail?.node;
+        const file = node?.file;
+        const openSession = ++session;
+        setDocument(node?.name ?? "Untitled", "Opening file...");
+        try {
+          const text = typeof file?.text === "function" ? await file.text() : String(node?.meta?.text ?? "");
+          if (openSession === session) setDocument(node.name, text);
+        } catch (error) {
+          console.error("Notepad could not read the selected file.", error);
+          if (openSession === session) setDocument(node?.name ?? "Untitled", "The file could not be opened.");
+        }
+      }, { signal: this.#listeners.signal });
+      reset();
     }
 
     #configureCalculator() {
@@ -1681,6 +2178,7 @@
       this.#fileSystemUnsubscribe = this.#fileSystem.subscribe(() => {
         this.#renderDesktopItems();
         this.#renderAllExplorerWindows();
+        this.#scheduleProfileSave();
       });
       this.#renderDesktopItems();
       this.#desktopMarquee = new DesktopSelectionMarquee(
@@ -1856,6 +2354,9 @@
         pointerEvents: "none",
         filter: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55))"
       });
+      if (this.#isImageFile(item)) {
+        image.addEventListener("error", () => { image.src = ASSETS.imageFileFallback; }, { once: true });
+      }
       const label = createElement("span", {
         text: item.name,
         "data-desktop-item-label": ""
@@ -1881,16 +2382,32 @@
       return icon;
     }
 
+    #isImageFile(item) {
+      if (!item || ["folder", "drive", "dvd", "computer", "recycle", "shortcut", "app-shortcut", "virtual"].includes(item.type)) return false;
+      const mimeType = String(item.file?.type || item.meta?.mimeType || "").toLocaleLowerCase();
+      if (mimeType.startsWith("image/")) return true;
+      return /\.(?:png|jpe?g|gif|bmp|webp)$/i.test(item?.name ?? "");
+    }
+
+    #isTextFile(item) {
+      if (!item || ["folder", "drive", "dvd", "computer", "recycle", "shortcut", "app-shortcut", "virtual"].includes(item.type)) return false;
+      const mimeType = String(item.file?.type || item.meta?.mimeType || "").toLocaleLowerCase();
+      if (mimeType.startsWith("text/")) return true;
+      return /\.(?:txt|log|md|csv|json|xml|ini|css|js|html?)$/i.test(item?.name ?? "");
+    }
+
     #desktopItemIcon(item) {
       if (item.type === "recycle") {
         return this.#fileSystem.recycleItems.length > 0 ? ASSETS.recycleFull : ASSETS.recycleEmpty;
       }
+      if (item.icon) return item.icon;
       if (item.type === "computer") return ASSETS.computer;
       if (item.type === "drive") return ASSETS.systemDrive;
       if (item.type === "dvd") return ASSETS.dvdDrive;
       if (item.type === "folder") {
         return item.children.length > 0 ? ASSETS.folderFull : ASSETS.folderEmpty;
       }
+      if (this.#isImageFile(item)) return ASSETS.imageFile;
       return ASSETS.textFile;
     }
 
@@ -1997,7 +2514,8 @@
         minDeltaY: -groupMinY,
         maxDeltaY: layerRect.height - groupMaxBottom,
         dropTargets,
-        hoverTargetId: null
+        hoverTargetId: null,
+        crossTarget: null
       };
       element.setPointerCapture(event.pointerId);
       document.body.style.userSelect = "none";
@@ -2012,7 +2530,7 @@
       const deltaY = event.clientY - drag.startMouseY;
       drag.pendingDeltaX = Math.min(drag.maxDeltaX, Math.max(drag.minDeltaX, deltaX));
       drag.pendingDeltaY = Math.min(drag.maxDeltaY, Math.max(drag.minDeltaY, deltaY));
-      this.#updateDesktopDropTarget(drag);
+      this.#updateDesktopDropTarget(drag, event);
       if (this.#desktopItemDragFrame === 0) {
         this.#desktopItemDragFrame = requestAnimationFrame(() => {
           this.#desktopItemDragFrame = 0;
@@ -2041,13 +2559,22 @@
       }
       this.#desktopItemDrag = null;
       this.#setDesktopDropTarget(null);
+      this.#setShellDropHighlight(null);
       document.body.style.userSelect = "";
 
       const movableItems = drag.entries
         .map(({ item }) => item)
         .filter(({ permanent }) => !permanent);
 
-      if (dropTarget?.type === "recycle" && movableItems.length > 0) {
+      if (drag.crossTarget?.kind === "taskbar") {
+        drag.entries.forEach(({ item }) => this.#pinShellItem(item));
+        this.#renderDesktopItems();
+      } else if (drag.crossTarget?.kind === "explorer-path" && movableItems.length > 0) {
+        this.#fileSystem.move(movableItems, drag.crossTarget.path);
+        this.#clearDesktopSelection();
+      } else if (drag.crossTarget) {
+        this.#renderDesktopItems();
+      } else if (dropTarget?.type === "recycle" && movableItems.length > 0) {
         this.#deleteDesktopItems(movableItems.map(({ id }) => id));
       } else if (dropTarget?.type === "folder") {
         this.#moveDesktopItemsIntoFolder(movableItems, dropTarget);
@@ -2070,12 +2597,82 @@
             snappedLead.y - drag.leadEntry.initialY
           ));
         }
+        const availableDelta = this.#findAvailableDesktopDragDelta(
+          drag,
+          finalDeltaX,
+          finalDeltaY
+        );
+        finalDeltaX = availableDelta.x;
+        finalDeltaY = availableDelta.y;
         drag.entries.forEach((entry) => {
           entry.item.x = entry.initialX + finalDeltaX;
           entry.item.y = entry.initialY + finalDeltaY;
         });
         this.#renderDesktopItems();
+        this.#scheduleProfileSave();
       }
+    }
+
+    #findAvailableDesktopDragDelta(drag, preferredDeltaX, preferredDeltaY) {
+      const metrics = this.#desktopIconMetrics();
+      const draggedIds = new Set(drag.entries.map(({ item }) => item.id));
+      const occupiedItems = this.#fileSystem.desktopItems.filter(({ id, parentId }) =>
+        parentId === null && !draggedIds.has(id));
+      const clampDeltaX = (value) => Math.min(drag.maxDeltaX, Math.max(drag.minDeltaX, value));
+      const clampDeltaY = (value) => Math.min(drag.maxDeltaY, Math.max(drag.minDeltaY, value));
+      const preferredX = clampDeltaX(preferredDeltaX);
+      const preferredY = clampDeltaY(preferredDeltaY);
+      const isAvailable = (deltaX, deltaY) => drag.entries.every((entry) => {
+        const candidate = {
+          left: entry.initialX + deltaX,
+          right: entry.initialX + deltaX + metrics.width,
+          top: entry.initialY + deltaY,
+          bottom: entry.initialY + deltaY + metrics.height
+        };
+        return occupiedItems.every((item) => !this.#rectanglesIntersect(candidate, {
+          left: item.x,
+          right: item.x + metrics.width,
+          top: item.y,
+          bottom: item.y + metrics.height
+        }));
+      });
+
+      if (isAvailable(preferredX, preferredY)) return { x: preferredX, y: preferredY };
+
+      const candidateXs = new Set([preferredX, clampDeltaX(0)]);
+      const candidateYs = new Set([preferredY, clampDeltaY(0)]);
+
+      if (this.#desktopAlignToGrid) {
+        const lead = drag.leadEntry;
+        const layerWidth = this.#desktopIconLayer?.clientWidth ?? window.innerWidth;
+        const layerHeight = this.#desktopIconLayer?.clientHeight ?? window.innerHeight - TASKBAR_HEIGHT;
+        for (let x = 10; x <= layerWidth - metrics.width; x += metrics.width) {
+          candidateXs.add(clampDeltaX(x - lead.initialX));
+        }
+        for (let y = 10; y <= layerHeight - metrics.height; y += metrics.height) {
+          candidateYs.add(clampDeltaY(y - lead.initialY));
+        }
+      } else {
+        candidateXs.add(drag.minDeltaX);
+        candidateXs.add(drag.maxDeltaX);
+        candidateYs.add(drag.minDeltaY);
+        candidateYs.add(drag.maxDeltaY);
+        occupiedItems.forEach((item) => {
+          drag.entries.forEach((entry) => {
+            candidateXs.add(clampDeltaX(item.x - metrics.width - entry.initialX));
+            candidateXs.add(clampDeltaX(item.x + metrics.width - entry.initialX));
+            candidateYs.add(clampDeltaY(item.y - metrics.height - entry.initialY));
+            candidateYs.add(clampDeltaY(item.y + metrics.height - entry.initialY));
+          });
+        });
+      }
+
+      const candidates = [];
+      candidateXs.forEach((x) => candidateYs.forEach((y) => candidates.push({ x, y })));
+      candidates.sort((first, second) =>
+        ((first.x - preferredX) ** 2 + (first.y - preferredY) ** 2) -
+        ((second.x - preferredX) ** 2 + (second.y - preferredY) ** 2));
+      return candidates.find(({ x, y }) => isAvailable(x, y)) ?? { x: 0, y: 0 };
     }
 
     #cancelDesktopItemDrag() {
@@ -2087,10 +2684,26 @@
       });
       this.#desktopItemDrag = null;
       this.#setDesktopDropTarget(null);
+      this.#setShellDropHighlight(null);
       document.body.style.userSelect = "";
     }
 
-    #updateDesktopDropTarget(drag) {
+    #updateDesktopDropTarget(drag, event) {
+      const draggedItems = drag.entries.map(({ item }) => item);
+      const crossTarget = this.#resolveShellDropTarget(event.clientX, event.clientY, {
+        kind: "desktop",
+        nodes: draggedItems
+      });
+      if (crossTarget) {
+        drag.crossTarget = crossTarget;
+        drag.hoverTargetId = null;
+        this.#setDesktopDropTarget(null);
+        this.#setShellDropHighlight(crossTarget.valid === false ? null : crossTarget.element);
+        return;
+      }
+      drag.crossTarget = null;
+      this.#setShellDropHighlight(null);
+
       const { pendingDeltaX: deltaX, pendingDeltaY: deltaY } = drag;
       const sourceRect = drag.leadEntry.rect;
       const draggedRect = {
@@ -2134,6 +2747,260 @@
         first.right > second.left &&
         first.top < second.bottom &&
         first.bottom > second.top;
+    }
+
+    #setShellDropHighlight(element) {
+      if (this.#shellDropHighlight === element) return;
+      this.#shellDropHighlight?.classList.remove("is-shell-drop-target");
+      this.#shellDropHighlight = element ?? null;
+      this.#shellDropHighlight?.classList.add("is-shell-drop-target");
+    }
+
+    #resolveShellDropTarget(clientX, clientY, source) {
+      const hit = document.elementFromPoint(clientX, clientY);
+      if (!hit) return { kind: "invalid", valid: false, element: null };
+
+      const taskbar = hit.closest("[data-taskbar]");
+      if (taskbar) {
+        const canPin = source.kind === "start" || (source.nodes?.length ?? 0) > 0;
+        return { kind: canPin ? "taskbar" : "invalid", valid: canPin, element: taskbar };
+      }
+
+      const explorerWindow = hit.closest(".explorer-window");
+      if (explorerWindow) {
+        const state = this.#explorerWindows.get(explorerWindow.id);
+        const itemElement = hit.closest("[data-explorer-item-id]");
+        const place = hit.closest("[data-explorer-place]");
+        let path = place?.dataset.explorerPlace ?? state?.path ?? null;
+        if (itemElement && state) {
+          const item = this.#findExplorerItem(state, itemElement.dataset.explorerItemId);
+          if (item?.targetPath) path = item.targetPath;
+          else if (["folder", "drive"].includes(item?.type)) path = this.#fileSystem.pathFor(item);
+          else path = null;
+        }
+        const targetNode = path ? this.#fileSystem.resolve(path) : null;
+        const nodes = source.nodes ?? [];
+        const canMove = source.kind !== "start" &&
+          Boolean(targetNode && ["folder", "drive"].includes(targetNode.type) && !targetNode.meta?.systemFolder) &&
+          !["/Quick Access", "/Computer", "/Recycle Bin"].includes(path) &&
+          nodes.some((node) => {
+            if (!node || node.permanent || node.parentPath === path) return false;
+            const sourcePath = this.#fileSystem.pathFor(node);
+            return sourcePath !== path && !path.startsWith(`${sourcePath}/`);
+          });
+        const targetElement = itemElement ?? place ?? hit.closest("[data-explorer-content]") ?? explorerWindow;
+        return {
+          kind: canMove ? "explorer-path" : "invalid",
+          valid: canMove,
+          element: targetElement,
+          path,
+          state
+        };
+      }
+
+      const desktopItem = hit.closest("[data-desktop-item-id]");
+      if (source.kind === "explorer" && desktopItem) {
+        const target = this.#fileSystem.desktopItems.find(({ id }) => id === desktopItem.dataset.desktopItemId);
+        if (target?.type === "folder") {
+          const path = this.#fileSystem.pathFor(target);
+          const canMove = source.nodes.some((node) => {
+            const sourcePath = this.#fileSystem.pathFor(node);
+            return !node.permanent && node.parentPath !== path && !path.startsWith(`${sourcePath}/`);
+          });
+          return { kind: canMove ? "explorer-path" : "invalid", valid: canMove, element: desktopItem, path };
+        }
+      }
+
+      const desktopRect = this.#desktopIconLayer?.getBoundingClientRect();
+      const overDesktop = desktopRect &&
+        clientX >= desktopRect.left && clientX <= desktopRect.right &&
+        clientY >= desktopRect.top && clientY <= desktopRect.bottom &&
+        !hit.closest(".window, .start-menu, [data-taskbar]");
+      if (overDesktop && source.kind !== "desktop") {
+        return { kind: "desktop", valid: true, element: this.#desktopIconLayer };
+      }
+      if (overDesktop && source.kind === "desktop") return null;
+
+      if (hit.closest(".window, .start-menu")) {
+        return { kind: "invalid", valid: false, element: null };
+      }
+      return null;
+    }
+
+    #beginShellDrag(event, { kind, sourceElement, sourceState = null, nodes = [], appName = null, name, icon }) {
+      if (this.#shellDrag || this.#desktopItemDrag || !event.isPrimary || event.button !== 0) return;
+      this.#shellDrag = {
+        pointerId: event.pointerId,
+        kind,
+        sourceElement,
+        sourceState,
+        nodes,
+        appName,
+        name,
+        icon,
+        startX: event.clientX,
+        startY: event.clientY,
+        active: false,
+        ghost: null,
+        target: null
+      };
+      sourceElement.setPointerCapture(event.pointerId);
+    }
+
+    #updateShellDrag(event) {
+      const drag = this.#shellDrag;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const deltaX = event.clientX - drag.startX;
+      const deltaY = event.clientY - drag.startY;
+      if (!drag.active && Math.hypot(deltaX, deltaY) < 6) return;
+      event.preventDefault();
+      if (!drag.active) {
+        drag.active = true;
+        drag.ghost = this.#createShellDragGhost(drag.icon, drag.name);
+        this.#desktop.append(drag.ghost);
+        document.body.style.userSelect = "none";
+      }
+
+      assignStyles(drag.ghost, {
+        left: `${Math.min(window.innerWidth - 88, event.clientX + 14)}px`,
+        top: `${Math.min(window.innerHeight - 84, event.clientY + 16)}px`
+      });
+      drag.target = this.#resolveShellDropTarget(event.clientX, event.clientY, drag);
+      const valid = Boolean(drag.target?.valid !== false && drag.target);
+      drag.ghost.classList.toggle("is-invalid", !valid);
+      this.#setShellDropHighlight(valid ? drag.target.element : null);
+    }
+
+    #endShellDrag(event) {
+      const drag = this.#shellDrag;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const completedDrag = drag.active;
+      const target = drag.target?.valid === false ? null : drag.target;
+
+      if (completedDrag && target) {
+        if (drag.kind === "start" && target.kind === "desktop") {
+          this.#createAppShortcut(drag.appName, event.clientX, event.clientY);
+        } else if (drag.kind === "start" && target.kind === "taskbar") {
+          this.#pinShellItem(this.#appShortcutDescriptor(drag.appName));
+        } else if (drag.kind === "explorer" && target.kind === "desktop") {
+          this.#moveNodesToDesktop(drag.nodes, event.clientX, event.clientY);
+          drag.sourceState?.selectedIds.clear();
+          if (drag.sourceState) this.#renderExplorerWindow(drag.sourceState);
+        } else if (drag.kind === "explorer" && target.kind === "explorer-path") {
+          this.#fileSystem.move(drag.nodes, target.path);
+          drag.sourceState?.selectedIds.clear();
+          if (drag.sourceState) this.#renderExplorerWindow(drag.sourceState);
+        } else if (drag.kind === "explorer" && target.kind === "taskbar") {
+          drag.nodes.forEach((node) => this.#pinShellItem(node));
+        }
+      }
+
+      if (completedDrag) {
+        this.#suppressShellClick(drag.sourceElement);
+        if (drag.kind === "start") this.#dismissStartMenuAfterDrag();
+      }
+      this.#releaseShellDrag(drag);
+    }
+
+    #cancelShellDrag() {
+      if (!this.#shellDrag) return;
+      this.#releaseShellDrag(this.#shellDrag);
+    }
+
+    #releaseShellDrag(drag) {
+      this.#shellDrag = null;
+      drag.ghost?.remove();
+      if (drag.sourceElement?.hasPointerCapture?.(drag.pointerId)) {
+        drag.sourceElement.releasePointerCapture(drag.pointerId);
+      }
+      this.#setShellDropHighlight(null);
+      document.body.style.userSelect = "";
+    }
+
+    #createShellDragGhost(icon, name) {
+      const ghost = createElement("div", { className: "shell-drag-ghost", "aria-hidden": "true" });
+      ghost.append(
+        createElement("img", { src: icon || ASSETS.textFile, alt: "", draggable: false }),
+        createElement("span", { text: name || "Item" })
+      );
+      return ghost;
+    }
+
+    #suppressShellClick(sourceElement) {
+      window.clearTimeout(this.#suppressedShellClickTimer);
+      this.#suppressedShellClickTarget = sourceElement;
+      this.#suppressedShellClickTimer = window.setTimeout(() => {
+        this.#suppressedShellClickTarget = null;
+      }, 0);
+    }
+
+    #consumeSuppressedShellClick(event) {
+      if (!this.#suppressedShellClickTarget?.contains(event.target)) return false;
+      event.preventDefault();
+      event.stopPropagation();
+      this.#suppressedShellClickTarget = null;
+      window.clearTimeout(this.#suppressedShellClickTimer);
+      return true;
+    }
+
+    #dismissStartMenuAfterDrag() {
+      if (!this.#startMenu) return;
+      this.#startMenu.classList.remove("is-open", "is-visible");
+      this.#startMenu.setAttribute("aria-hidden", "true");
+      this.#taskbar?.querySelector("[data-start-button]")?.setAttribute("aria-expanded", "false");
+    }
+
+    #appShortcutDescriptor(appName) {
+      const app = APP_SHORTCUTS[appName];
+      if (!app) return null;
+      return {
+        id: `app-shortcut-${appName}`,
+        type: "app-shortcut",
+        name: app.name,
+        icon: app.icon,
+        permanent: false,
+        meta: { appName }
+      };
+    }
+
+    #createAppShortcut(appName, clientX, clientY) {
+      const descriptor = this.#appShortcutDescriptor(appName);
+      if (!descriptor || !this.#desktopIconLayer) return null;
+      const rect = this.#desktopIconLayer.getBoundingClientRect();
+      const point = this.#findAvailableDesktopPoint({
+        x: clientX - rect.left - this.#desktopIconMetrics().width / 2,
+        y: clientY - rect.top - this.#desktopIconMetrics().height / 2
+      });
+      this.#clearDesktopSelection();
+      const shortcut = this.#fileSystem.create("/Desktop", "app-shortcut", descriptor.name, {
+        icon: descriptor.icon,
+        meta: descriptor.meta,
+        ...point
+      });
+      if (shortcut) {
+        shortcut.isSelected = true;
+        this.#selectedDesktopItemId = shortcut.id;
+        this.#renderDesktopItems();
+      }
+      return shortcut;
+    }
+
+    #moveNodesToDesktop(nodes, clientX, clientY) {
+      const movable = nodes.filter(({ permanent }) => !permanent);
+      if (!movable.length || !this.#desktopIconLayer) return;
+      const rect = this.#desktopIconLayer.getBoundingClientRect();
+      if (!this.#fileSystem.move(movable, "/Desktop")) return;
+      movable.forEach((node, index) => {
+        const point = this.#findAvailableDesktopPoint({
+          x: clientX - rect.left - this.#desktopIconMetrics().width / 2 + index * 18,
+          y: clientY - rect.top - this.#desktopIconMetrics().height / 2 + index * 18
+        }, node.id);
+        node.x = point.x;
+        node.y = point.y;
+        node.isSelected = index === 0;
+      });
+      this.#selectedDesktopItemId = movable[0]?.id ?? null;
+      this.#renderDesktopItems();
     }
 
     #moveDesktopItemsIntoFolder(items, folder) {
@@ -2184,8 +3051,15 @@
         parentId === null && id !== excludedId);
 
       for (let attempt = 0; attempt < 120; attempt += 1) {
-        const occupied = visibleItems.some((item) =>
-          Math.abs(item.x - x) < metrics.width * 0.7 && Math.abs(item.y - y) < metrics.height * 0.7);
+        const occupied = visibleItems.some((item) => this.#rectanglesIntersect(
+          { left: x, right: x + metrics.width, top: y, bottom: y + metrics.height },
+          {
+            left: item.x,
+            right: item.x + metrics.width,
+            top: item.y,
+            bottom: item.y + metrics.height
+          }
+        ));
         if (!occupied) return { x, y };
         y += metrics.height;
         if (y > maxY) {
@@ -2321,10 +3195,12 @@
           { label: "Auto arrange icons", checked: this.#desktopAutoArrange, action: () => {
             this.#desktopAutoArrange = !this.#desktopAutoArrange;
             this.#renderDesktopItems();
+            this.#scheduleProfileSave();
           } },
           { label: "Align icons to grid", checked: this.#desktopAlignToGrid, action: () => {
             this.#desktopAlignToGrid = !this.#desktopAlignToGrid;
             this.#constrainDesktopItems();
+            this.#scheduleProfileSave();
           } }
         ] },
         { label: "Sort by", submenu: [
@@ -2343,9 +3219,9 @@
           { label: "Text Document", icon: ASSETS.textFile, action: () => this.#addDesktopItem("text", "New Text Document.txt") }
         ] },
         { separator: true },
-        { label: "Screen Resolution / Display", icon: ASSETS.contextDisplay, action: () => this.#openAppWindow("display") },
+        { label: "Screen Resolution / Display", icon: ASSETS.contextDisplay, action: () => this.#openControlPanel("display") },
         { label: "Gadgets", icon: ASSETS.contextGadgets, action: () => this.#emitDesktopPlaceholder("gadgets") },
-        { label: "Personalize", icon: ASSETS.contextPersonalize, action: () => this.#emitDesktopPlaceholder("personalize") }
+        { label: "Personalize", icon: ASSETS.contextPersonalize, action: () => this.#openControlPanel("themes") }
       ];
     }
 
@@ -2520,6 +3396,7 @@
     #setDesktopIconSize(size) {
       this.#desktopIconSize = size;
       this.#constrainDesktopItems();
+      this.#scheduleProfileSave();
     }
 
     #sortDesktopItems(property) {
@@ -2529,6 +3406,7 @@
       });
       this.#desktopAutoArrange = true;
       this.#renderDesktopItems();
+      this.#scheduleProfileSave();
     }
 
     #refreshDesktopIcons() {
@@ -2601,16 +3479,44 @@
 
     #openDesktopItem(itemId) {
       const item = this.#fileSystem.desktopItems.find(({ id }) => id === itemId);
+      this.#openShellItem(item);
+    }
+
+    #openShellItem(item) {
       if (!item) return;
-      if (item.type === "computer" || item.type === "recycle") {
+      if (item.type === "app-shortcut" && APP_SHORTCUTS[item.meta?.appName]) {
+        this.#openAppWindow(item.meta.appName);
+        return;
+      }
+      if (item.targetPath) {
         this.#openExplorer(item.targetPath);
         return;
       }
-      if (item.type === "folder") {
+      if (["folder", "drive"].includes(item.type)) {
         this.#openExplorer(this.#fileSystem.pathFor(item));
         return;
       }
+      if (this.#isImageFile(item)) {
+        this.#openImageFile(item);
+        return;
+      }
+      if (this.#isTextFile(item)) {
+        this.#openTextFile(item);
+        return;
+      }
       this.#showShellItemProperties(item);
+    }
+
+    #openImageFile(item) {
+      this.#openAppWindow("photo-viewer", { preserveDocument: true });
+      this.#photoViewerApp?.open(item);
+    }
+
+    #openTextFile(item) {
+      const notepadWindow = this.#desktop.querySelector('[data-app-window="notepad"]');
+      if (!notepadWindow) return;
+      this.#openAppWindow("notepad", { preserveDocument: true });
+      void this.#notepadApp?.open(item);
     }
 
     #openExplorer(startPath = "/Quick Access") {
@@ -2637,6 +3543,7 @@
       };
 
       this.#desktop.append(windowElement);
+      void openAeroWindow(windowElement);
       this.#initializeExplorerWindowElement(windowElement);
       this.#explorerWindows.set(id, state);
       this.#bindExplorerWindow(state);
@@ -2726,7 +3633,31 @@
         if (crumb) this.#navigateExplorer(state, crumb.dataset.explorerCrumb);
       }, { signal });
 
+      content?.addEventListener("pointerdown", (event) => {
+        const itemElement = event.target.closest("[data-explorer-item-id]");
+        if (!itemElement || event.ctrlKey || event.metaKey || event.target.closest("input")) return;
+        const itemId = itemElement.dataset.explorerItemId;
+        if (!state.selectedIds.has(itemId)) {
+          state.selectedIds.clear();
+          state.selectedIds.add(itemId);
+          this.#syncExplorerSelection(state);
+        }
+        const nodes = [...state.selectedIds]
+          .map((id) => this.#findExplorerItem(state, id))
+          .filter((item) => item && !item.permanent);
+        const lead = this.#findExplorerItem(state, itemId);
+        if (!lead || nodes.length === 0) return;
+        this.#beginShellDrag(event, {
+          kind: "explorer",
+          sourceElement: itemElement,
+          sourceState: state,
+          nodes,
+          name: nodes.length > 1 ? `${nodes.length} items` : lead.name,
+          icon: this.#fileSystemItemIcon(lead)
+        });
+      }, { signal });
       content?.addEventListener("click", (event) => {
+        if (this.#consumeSuppressedShellClick(event)) return;
         const itemElement = event.target.closest("[data-explorer-item-id]");
         if (!itemElement) {
           state.selectedIds.clear();
@@ -2924,6 +3855,7 @@
     }
 
     #fileSystemItemIcon(item) {
+      if (this.#isImageFile(item)) return ASSETS.imageFile;
       if (item.icon) return item.icon;
       if (item.type === "computer") return ASSETS.computer;
       if (item.type === "recycle") return this.#fileSystem.recycleItems.length ? ASSETS.recycleFull : ASSETS.recycleEmpty;
@@ -2944,6 +3876,7 @@
         "data-explorer-item-id": item.id
       });
       const image = createElement("img", { src: this.#fileSystemItemIcon(item), alt: "", draggable: false });
+      if (this.#isImageFile(item)) image.addEventListener("error", () => { image.src = ASSETS.imageFileFallback; }, { once: true });
       const label = createElement("span", { text: item.name, "data-explorer-item-label": "" });
       element.append(image, label);
       return element;
@@ -3002,6 +3935,14 @@
       }
       if (["folder", "drive"].includes(item.type)) {
         this.#navigateExplorer(state, this.#fileSystem.pathFor(item));
+        return;
+      }
+      if (this.#isImageFile(item)) {
+        this.#openImageFile(item);
+        return;
+      }
+      if (this.#isTextFile(item)) {
+        this.#openTextFile(item);
         return;
       }
       this.#showShellItemProperties(item, state.element);
@@ -3174,6 +4115,7 @@
         flexDirection: "column"
       });
       this.#desktop.append(dialog);
+      void openAeroWindow(dialog);
       this.#raiseWindow(dialog);
       ok.focus({ preventScroll: true });
     }
@@ -3201,7 +4143,7 @@
         boxSizing: "border-box",
         padding: "3px 10px 3px 58px",
         borderTop: "1px solid rgba(255, 255, 255, 0.65)",
-        background: "linear-gradient(rgba(30, 82, 133, 0.78), rgba(5, 36, 73, 0.88))",
+        background: "linear-gradient(to bottom, #5E8FB7B3 0%, #5180A678 48%, rgba(5, 36, 73, 0.66) 100%)",
         boxShadow: "0 -1px 8px rgba(0, 0, 0, 0.45)"
       });
 
@@ -3302,11 +4244,31 @@
           marginLeft: "auto",
           minWidth: "72px",
           color: "#fff",
-          fontSize: "12px",
-          lineHeight: "15px",
+          fontFamily: '"Segoe UI", Tahoma, sans-serif',
+          fontSize: "11px",
+          lineHeight: "12px",
           textAlign: "center",
           textShadow: "0 1px 2px #000"
         });
+      }
+
+      const showDesktop = this.#taskbar.querySelector("[data-show-desktop]");
+      if (showDesktop) {
+        showDesktop.addEventListener("click", () => {
+          const restoreTargets = [...this.#desktop.querySelectorAll(".window[data-show-desktop-minimized=\"true\"]")];
+          if (restoreTargets.length > 0) {
+            restoreTargets.forEach((windowElement) => {
+              delete windowElement.dataset.showDesktopMinimized;
+              void this.#setMinimized(windowElement, false);
+            });
+            return;
+          }
+
+          this.#desktop.querySelectorAll(".window:not([hidden]):not(.minimized)").forEach((windowElement) => {
+            windowElement.dataset.showDesktopMinimized = "true";
+            void this.#setMinimized(windowElement, true);
+          });
+        }, { signal: this.#listeners.signal });
       }
     }
 
@@ -3322,6 +4284,8 @@
         cmd: ASSETS.cmd,
         calculator: ASSETS.calculator,
         notepad: ASSETS.notepad,
+        paint: ASSETS.paint,
+        "photo-viewer": ASSETS.photoViewer,
         documents: ASSETS.documents,
         pictures: ASSETS.pictures,
         music: ASSETS.music,
@@ -3340,13 +4304,33 @@
       menu.querySelectorAll("[data-start-icon]").forEach((item) => {
         const source = iconSources[item.dataset.startIcon];
         const image = item.querySelector("img");
-        if (source && image) image.src = source;
+        if (source && image) {
+          image.src = source;
+          if (source === ASSETS.imageFile) {
+            image.addEventListener("error", () => { image.src = ASSETS.imageFileFallback; }, { once: true });
+          }
+        }
       });
+      menu.addEventListener("pointerdown", (event) => {
+        const item = event.target.closest(".start-menu__item[data-start-icon]");
+        const app = APP_SHORTCUTS[item?.dataset.startIcon];
+        if (!item || !app) return;
+        this.#beginShellDrag(event, {
+          kind: "start",
+          sourceElement: item,
+          appName: item.dataset.startIcon,
+          name: app.name,
+          icon: app.icon
+        });
+      }, { signal: this.#listeners.signal });
 
       const showContextProfile = (item) => {
         const source = iconSources[item?.dataset.startIcon];
         if (!source || !contextProfile || !profile) return;
         contextProfile.src = source;
+        if (source === ASSETS.imageFile) {
+          contextProfile.addEventListener("error", () => { contextProfile.src = ASSETS.imageFileFallback; }, { once: true });
+        }
         profile.classList.add("is-contextual");
       };
       const showDefaultProfile = () => profile?.classList.remove("is-contextual");
@@ -3382,12 +4366,18 @@
       };
 
       menu.addEventListener("click", (event) => {
+        if (this.#consumeSuppressedShellClick(event)) return;
         const appItem = event.target.closest(".start-menu__item[data-start-icon]");
         if (appItem) {
           openStartApp(appItem.dataset.startIcon);
           return;
         }
         const systemItem = event.target.closest(".start-menu__system-list [data-start-icon]");
+        if (systemItem?.dataset.startIcon === "controlPanel") {
+          this.#openControlPanel("home");
+          closeMenu();
+          return;
+        }
         const explorerPaths = {
           documents: "/Documents",
           pictures: "/Pictures",
@@ -3470,8 +4460,8 @@
         alignSelf: "stretch",
         alignItems: "stretch",
         marginLeft: "auto",
-        marginTop: "-3px",
-        marginBottom: "-3px"
+        marginTop: "0",
+        marginBottom: "0"
       });
       const network = this.#createTrayButton("Network: Internet access", ASSETS.networkIcon);
       network.button.dataset.networkTray = "";
@@ -3483,7 +4473,7 @@
 
       assignStyles(clockButton.button, {
         minWidth: "78px",
-        padding: "2px 7px"
+        padding: "0 7px"
       });
       assignStyles(clock, {
         display: "block",
@@ -3572,8 +4562,11 @@
         "aria-expanded": "false"
       }, {
         position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         minWidth: "34px",
-        height: "40px",
+        height: `${TASKBAR_HEIGHT}px`,
         padding: "0 5px",
         border: "0",
         borderRadius: "0",
@@ -3960,6 +4953,7 @@
         output.value = String(this.#volume);
         output.textContent = `${this.#volume}%`;
         this.#updateVolumeIcon();
+        this.#scheduleProfileSave();
       };
       const triggerOverLimit = () => {
         syncVolume(100);
@@ -4071,6 +5065,7 @@
       try {
         // Nothing visible or interactive changes during this authentic shell lag.
         await wait(POWER_ACTION_LAG_MS);
+        await this.#profilePersistence?.flush();
 
         this.#setState(isRestart ? "restarting" : "shutting-down");
         this.#unmountDesktop();
@@ -4288,8 +5283,17 @@
       this.#cancelDrag();
       this.#cancelResize();
       this.#cancelDesktopItemDrag();
+      this.#cancelShellDrag();
       this.#desktopMarquee?.destroy();
       this.#desktopMarquee = null;
+      this.#chromeApp?.destroy();
+      this.#paintApp?.destroy();
+      this.#photoViewerApp?.destroy();
+      this.#notepadApp?.destroy();
+      this.#chromeApp = null;
+      this.#paintApp = null;
+      this.#photoViewerApp = null;
+      this.#notepadApp = null;
       this.#fileSystemUnsubscribe?.();
       this.#fileSystemUnsubscribe = null;
       this.#explorerWindows.forEach((state) => {
@@ -4302,10 +5306,12 @@
       window.clearInterval(this.#analogClockTimer);
       window.clearTimeout(this.#desktopRefreshTimer);
       window.clearTimeout(this.#startMenuCloseTimer);
+      window.clearTimeout(this.#suppressedShellClickTimer);
       this.#desktop.remove();
     }
 
     #mountCleanDesktop() {
+      this.#pendingPinnedItems = this.#capturePinnedItems();
       this.#listeners = new AbortController();
       this.#desktop = this.#desktopTemplate.cloneNode(true);
       this.#taskbar = this.#desktop.querySelector("[data-taskbar]");
@@ -4326,23 +5332,23 @@
       this.#startMenu = null;
       this.#startMenuCloseTimer = 0;
       this.#volumeIcon = null;
-      this.#volume = 100;
       this.#desktopIconLayer = null;
       this.#desktopContextMenu = null;
       this.#desktopFileInput = null;
-      this.#fileSystem = new ShellFileSystem();
       this.#fileSystemUnsubscribe = null;
       this.#explorerWindows = new Map();
       this.#explorerSequence = 0;
       this.#selectedDesktopItemId = null;
       this.#desktopItemDrag = null;
       this.#desktopItemDragFrame = 0;
+      this.#shellDrag = null;
+      this.#shellDropHighlight = null;
+      this.#suppressedShellClickTarget = null;
+      this.#suppressedShellClickTimer = 0;
+      this.#pinnedTaskItems = new Map();
       this.#lastDesktopClick = { itemId: null, time: 0 };
       this.#desktopRefreshTimer = 0;
       this.#desktopItemSequence = 0;
-      this.#desktopIconSize = "medium";
-      this.#desktopAutoArrange = false;
-      this.#desktopAlignToGrid = true;
       this.#shellClipboard = null;
       this.#contextMenuPoint = { x: 16, y: 96 };
       this.#windowAnimations = new WeakMap();
@@ -4632,8 +5638,9 @@
         height: "132px",
         boxSizing: "border-box",
         padding: "5px",
+        overflow: "hidden",
         border: "1px solid rgba(255, 255, 255, 0.95)",
-        borderRadius: "9px",
+        borderRadius: "20px",
         background: "linear-gradient(#dceaf3, #7997a7)",
         boxShadow: "0 5px 15px rgba(0, 20, 50, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.35)"
       });
@@ -4645,7 +5652,7 @@
         display: "block",
         width: "120px",
         height: "120px",
-        borderRadius: "5px",
+        borderRadius: "15px",
         objectFit: "cover"
       });
       const username = createElement("h1", { text: USERNAME }, {
@@ -4680,18 +5687,28 @@
       const submit = createElement("button", {
         type: "submit",
         className: "default",
-        text: "→",
         "aria-label": "Log in"
       }, {
-        width: "34px",
-        height: "34px",
-        minWidth: "34px",
+        width: "38px",
+        height: "38px",
+        minWidth: "38px",
         padding: "0",
+        overflow: "hidden",
         borderRadius: "50%",
-        fontSize: "23px",
-        lineHeight: "28px",
         cursor: `url("${ASSETS.cursorLink}") 6 2, pointer`
       });
+      const submitIcon = createElement("img", {
+        src: ASSETS.rightArrow,
+        alt: "",
+        draggable: false
+      }, {
+        display: "block",
+        width: "38px",
+        height: "38px",
+        maxWidth: "none",
+        pointerEvents: "none"
+      });
+      submit.append(submitIcon);
       const error = createElement("p", {
         role: "alert",
         ariaLive: "polite"
@@ -5104,7 +6121,7 @@
         }
 
         const titleBar = event.target.closest(".title-bar");
-        const isControl = event.target.closest("button, input, select, textarea, a");
+        const isControl = event.target.closest("button, input, select, textarea, a, [role='tab']");
         if (titleBar && !isControl && event.isPrimary && event.button === 0) {
           this.#beginDrag(event, windowElement, titleBar);
         }
@@ -5113,18 +6130,22 @@
       this.#desktop.addEventListener("pointermove", (event) => {
         this.#updateDrag(event);
         this.#updateResize(event);
+        this.#updateShellDrag(event);
       }, options);
       this.#desktop.addEventListener("pointerup", (event) => {
         this.#endDrag(event);
         this.#endResize(event);
+        this.#endShellDrag(event);
       }, options);
       this.#desktop.addEventListener("pointercancel", (event) => {
         this.#endDrag(event);
         this.#endResize(event);
+        this.#endShellDrag(event);
       }, options);
       this.#desktop.addEventListener("lostpointercapture", (event) => {
         this.#endDrag(event);
         this.#endResize(event);
+        this.#endShellDrag(event);
       }, options);
 
       this.#desktop.addEventListener("dblclick", (event) => {
@@ -5153,10 +6174,17 @@
           return;
         }
 
-        const taskButton = event.target.closest("[data-window-task]");
+        const taskButton = event.target.closest(".taskbar-window-button");
         if (taskButton) {
-          const windowElement = document.getElementById(taskButton.dataset.windowTask);
-          if (!windowElement || taskButton.dataset.animating === "true") return;
+          if (taskButton.dataset.animating === "true") return;
+          const windowElement = taskButton.dataset.windowTask
+            ? document.getElementById(taskButton.dataset.windowTask)
+            : null;
+          if (!windowElement) {
+            const pinned = this.#pinnedTaskItems.get(taskButton.dataset.pinnedKey);
+            if (pinned) this.#openShellItem(pinned.item);
+            return;
+          }
 
           const isActive = windowElement.classList.contains("active") &&
             !windowElement.classList.contains("minimized") &&
@@ -5197,7 +6225,7 @@
       });
     }
 
-    #openAppWindow(appName) {
+    #openAppWindow(appName, { preserveDocument = false } = {}) {
       const windowElement = this.#desktop.querySelector(`[data-app-window="${CSS.escape(appName)}"]`);
       if (!windowElement) return;
 
@@ -5208,7 +6236,17 @@
       if (isClosed && appName === "cmd") {
         windowElement.dispatchEvent(new Event("cmd:reset"));
       }
+      if (isClosed && !preserveDocument && appName === "paint") {
+        this.#paintApp?.reset();
+      }
+      if (isClosed && !preserveDocument && appName === "photo-viewer") {
+        this.#photoViewerApp?.showHome();
+      }
+      if (isClosed && !preserveDocument && appName === "notepad") {
+        this.#notepadApp?.reset();
+      }
       windowElement.hidden = false;
+      if (isClosed) void openAeroWindow(windowElement);
       this.#ensureTaskButton(windowElement);
       if (windowElement.classList.contains("minimized")) {
         void this.#setMinimized(windowElement, false, { focus: true });
@@ -5219,6 +6257,74 @@
         ? windowElement.querySelector("[data-cmd-input]")
         : windowElement.querySelector("button");
       preferredFocus?.focus({ preventScroll: true });
+    }
+
+    #capturePinnedItems() {
+      if (this.#pinnedTaskItems.size === 0) return [...this.#pendingPinnedItems];
+      return [...this.#pinnedTaskItems.values()].flatMap(({ item }) => {
+        const appName = item?.type === "app-shortcut" ? item.meta?.appName : null;
+        if (appName) return [{ type: "app", appName }];
+        return item?.id ? [{ type: "node", nodeId: item.id }] : [];
+      });
+    }
+
+    #restorePinnedItems() {
+      const descriptors = [...this.#pendingPinnedItems];
+      this.#pendingPinnedItems = descriptors;
+      descriptors.forEach((descriptor) => {
+        const item = descriptor.type === "app"
+          ? this.#appShortcutDescriptor(descriptor.appName)
+          : this.#fileSystem.findById(descriptor.nodeId);
+        if (item) this.#pinShellItem(item, { persist: false });
+      });
+    }
+
+    #pinnedKeyFor(item) {
+      if (!item) return null;
+      if (item.type === "app-shortcut" && item.meta?.appName) return `app:${item.meta.appName}`;
+      return item.id ? `node:${item.id}` : null;
+    }
+
+    #pinShellItem(item, { persist = true } = {}) {
+      const key = this.#pinnedKeyFor(item);
+      if (!key || this.#pinnedTaskItems.has(key) || !this.#taskbar) return this.#pinnedTaskItems.get(key)?.button ?? null;
+
+      const appName = item.type === "app-shortcut" ? item.meta?.appName : null;
+      const runningWindow = appName
+        ? this.#desktop.querySelector(`[data-app-window="${CSS.escape(appName)}"]:not([hidden])`)
+        : null;
+      const runningButton = runningWindow ? this.#taskButtonFor(runningWindow) : null;
+      const button = runningButton ?? this.#createPinnedTaskButton(item, key);
+      if (!button) return null;
+
+      button.classList.add("is-pinned");
+      button.dataset.pinnedKey = key;
+      if (appName) button.dataset.pinnedApp = appName;
+      this.#pinnedTaskItems.set(key, { item, button });
+      this.#pendingPinnedItems = this.#capturePinnedItems();
+      if (persist) this.#scheduleProfileSave();
+      return button;
+    }
+
+    #createPinnedTaskButton(item, key) {
+      const appName = item.type === "app-shortcut" ? item.meta?.appName : null;
+      const app = appName ? APP_SHORTCUTS[appName] : null;
+      const icon = app?.icon ?? this.#fileSystemItemIcon(item);
+      const glow = app?.glow ?? "80, 174, 232";
+      const button = createElement("button", {
+        type: "button",
+        className: "taskbar-window-button is-pinned",
+        title: item.name,
+        "aria-label": item.name,
+        "aria-pressed": "false",
+        "data-pinned-key": key
+      });
+      button.style.cursor = `url("${ASSETS.cursorLink}") 6 2, pointer`;
+      button.style.setProperty("--task-glow-rgb", glow);
+      if (appName) button.dataset.pinnedApp = appName;
+      button.append(createElement("img", { src: icon, alt: "", draggable: false }, { pointerEvents: "none" }));
+      this.#taskbar.insertBefore(button, this.#taskbar.querySelector("[data-system-tray], [data-taskbar-clock]"));
+      return button;
     }
 
     #windowTaskAppearance(windowElement) {
@@ -5232,7 +6338,9 @@
         cmd: { icon: ASSETS.cmd, glow: "104, 215, 122" },
         calculator: { icon: ASSETS.calculator, glow: "115, 172, 219" },
         display: { icon: ASSETS.controlPanel, glow: "73, 161, 219" },
-        notepad: { icon: ASSETS.notepad, glow: "94, 164, 219" }
+        notepad: { icon: ASSETS.notepad, glow: "94, 164, 219" },
+        paint: { icon: ASSETS.paint, glow: "238, 178, 62" },
+        "photo-viewer": { icon: ASSETS.photoViewer, glow: "79, 177, 232" }
       };
       const embeddedIcon = windowElement.querySelector(".window-body img")?.getAttribute("src");
       return appearances[appName] ?? { icon: embeddedIcon || ASSETS.about, glow: "91, 196, 240" };
@@ -5242,13 +6350,27 @@
       if (!this.#taskbar || !windowElement.id) return null;
       const selector = `[data-window-task="${CSS.escape(windowElement.id)}"]`;
       const existingButton = this.#taskbar.querySelector(selector);
-      if (existingButton) return existingButton;
+      if (existingButton) {
+        existingButton.classList.add("is-running");
+        return existingButton;
+      }
+
+      const appName = windowElement.dataset.appWindow;
+      const pinnedButton = appName
+        ? this.#taskbar.querySelector(`[data-pinned-app="${CSS.escape(appName)}"]`)
+        : null;
+      if (pinnedButton) {
+        pinnedButton.dataset.windowTask = windowElement.id;
+        pinnedButton.classList.add("is-running");
+        this.#syncWindowTaskState(windowElement);
+        return pinnedButton;
+      }
 
       const title = windowElement.querySelector(".title-bar-text")?.textContent?.trim() || "Window";
       const appearance = this.#windowTaskAppearance(windowElement);
       const taskButton = createElement("button", {
         type: "button",
-        className: "taskbar-window-button",
+        className: "taskbar-window-button is-running",
         title,
         "aria-label": title,
         "aria-pressed": "false",
@@ -5256,11 +6378,15 @@
       });
       taskButton.style.cursor = `url("${ASSETS.cursorLink}") 6 2, pointer`;
       taskButton.style.setProperty("--task-glow-rgb", appearance.glow);
-      taskButton.append(createElement("img", {
+      const taskIcon = createElement("img", {
         src: appearance.icon,
         alt: "",
         draggable: false
-      }, { pointerEvents: "none" }));
+      }, { pointerEvents: "none" });
+      if (appearance.icon === ASSETS.imageFile) {
+        taskIcon.addEventListener("error", () => { taskIcon.src = ASSETS.imageFileFallback; }, { once: true });
+      }
+      taskButton.append(taskIcon);
       this.#taskbar.insertBefore(taskButton, this.#taskbar.querySelector("[data-system-tray], [data-taskbar-clock]"));
       this.#syncWindowTaskState(windowElement);
       return taskButton;
@@ -5278,6 +6404,7 @@
       const isActive = windowElement.classList.contains("active") && !isMinimized;
       taskButton.classList.toggle("is-active", isActive);
       taskButton.classList.toggle("is-minimized", isMinimized);
+      taskButton.classList.add("is-running");
       taskButton.setAttribute("aria-pressed", String(isActive));
     }
 
@@ -5488,11 +6615,20 @@
       document.body.style.userSelect = "";
     }
 
-    #closeWindow(windowElement) {
+    async #closeWindow(windowElement, { force = false } = {}) {
+      if (windowElement.classList.contains("closing")) return;
+      if (!force && windowElement.dataset.appWindow === "paint" && this.#paintApp && !this.#paintApp.requestClose()) {
+        return;
+      }
+      if (!force && windowElement.dataset.appWindow === "notepad" && this.#notepadApp && !this.#notepadApp.requestClose()) {
+        return;
+      }
       if (this.#drag?.windowElement === windowElement) this.#cancelDrag();
       if (this.#resize?.windowElement === windowElement) this.#cancelResize();
       this.#windowAnimations.get(windowElement)?.cancel();
       this.#windowAnimations.delete(windowElement);
+
+      await closeAeroWindow(windowElement);
 
       const explorerState = this.#explorerWindows.get(windowElement.id);
       if (explorerState) {
@@ -5503,8 +6639,22 @@
       if (windowElement.dataset.appWindow === "cmd") {
         windowElement.dispatchEvent(new Event("cmd:close"));
       }
+      if (windowElement.dataset.appWindow === "paint") this.#paintApp?.onWindowClosed();
+      if (windowElement.dataset.appWindow === "photo-viewer") this.#photoViewerApp?.onWindowClosed();
+      if (windowElement.dataset.appWindow === "notepad") this.#notepadApp?.onWindowClosed();
       const taskButton = this.#taskButtonFor(windowElement);
-      taskButton?.remove();
+      if (taskButton?.classList.contains("is-pinned")) {
+        delete taskButton.dataset.windowTask;
+        taskButton.classList.remove("is-running", "is-active", "is-minimized", "is-animating");
+        taskButton.setAttribute("aria-pressed", "false");
+        const pinned = this.#pinnedTaskItems.get(taskButton.dataset.pinnedKey);
+        if (pinned) {
+          taskButton.title = pinned.item.name;
+          taskButton.setAttribute("aria-label", pinned.item.name);
+        }
+      } else {
+        taskButton?.remove();
+      }
       if (windowElement.dataset.appWindow) {
         windowElement.hidden = true;
         windowElement.classList.remove("active", "minimized", "is-window-animating");
@@ -5695,6 +6845,8 @@
       }
     }
   }
+
+  window.Windows7Shell = Object.freeze({ ShellFileSystem, Windows7Engine });
 
   const root = document.getElementById("windows-7-root");
   if (root) {

@@ -1,0 +1,461 @@
+(() => {
+  "use strict";
+
+  const IMAGE_ICON = "./assets/icons/image.png";
+  const IMAGE_ICON_FALLBACK = "./assets/icons/image.ico";
+  const SLIDESHOW_INTERVAL = 3000;
+  const createElement = (tagName, attributes = {}, children = []) => {
+    const element = document.createElement(tagName);
+    Object.entries(attributes).forEach(([name, value]) => {
+      if (name === "className") element.className = value;
+      else if (name === "text") element.textContent = value;
+      else if (name === "dataset") Object.assign(element.dataset, value);
+      else if (name in element) element[name] = value;
+      else element.setAttribute(name, value);
+    });
+    element.append(...(Array.isArray(children) ? children : [children]));
+    return element;
+  };
+  const createImageIcon = () => {
+    const image = createElement("img", { src: IMAGE_ICON, alt: "", draggable: false });
+    image.addEventListener("error", () => { image.src = IMAGE_ICON_FALLBACK; }, { once: true });
+    return image;
+  };
+  const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
+
+  class Windows7PhotoViewerApp {
+    #window;
+    #shell;
+    #stage;
+    #home;
+    #imageWrap;
+    #image;
+    #loading;
+    #dialogLayer;
+    #zoomSlider;
+    #zoomButton;
+    #zoomPopover;
+    #listeners = new AbortController();
+    #unsubscribe = null;
+    #resizeObserver = null;
+    #node = null;
+    #objectUrl = "";
+    #zoomMode = "fit";
+    #customScale = 1;
+    #slideshowTimer = 0;
+    #ignoreFileSystemChange = false;
+    #loadSequence = 0;
+
+    constructor(windowElement, shell) {
+      this.#window = windowElement;
+      this.#shell = shell;
+      this.#stage = windowElement.querySelector("[data-photo-stage]");
+      this.#home = windowElement.querySelector("[data-photo-home-page]");
+      this.#imageWrap = windowElement.querySelector("[data-photo-image-wrap]");
+      this.#image = windowElement.querySelector("[data-photo-image]");
+      this.#loading = windowElement.querySelector("[data-photo-loading]");
+      this.#dialogLayer = windowElement.querySelector("[data-photo-dialog-layer]");
+      this.#zoomSlider = windowElement.querySelector("[data-photo-zoom]");
+      this.#zoomButton = windowElement.querySelector("[data-photo-zoom-button]");
+      this.#zoomPopover = windowElement.querySelector("[data-photo-zoom-popover]");
+      const homeIcon = windowElement.querySelector(".photo-viewer-home__card > img");
+      homeIcon?.addEventListener("error", () => { homeIcon.src = IMAGE_ICON_FALLBACK; }, { once: true });
+      if (!this.#stage || !this.#home || !this.#imageWrap || !this.#image || !this.#dialogLayer || !this.#zoomSlider || !this.#zoomButton || !this.#zoomPopover) {
+        throw new Error("Windows Photo Viewer markup is incomplete.");
+      }
+      this.#bindEvents();
+      this.#unsubscribe = shell.subscribe(() => this.#handleFileSystemChange());
+      if (typeof ResizeObserver === "function") {
+        this.#resizeObserver = new ResizeObserver(() => {
+          if (this.#zoomMode === "fit" && this.#node) this.#applyZoom();
+        });
+        this.#resizeObserver.observe(this.#imageWrap);
+      }
+      this.showHome();
+    }
+
+    destroy() {
+      this.#listeners.abort();
+      this.#unsubscribe?.();
+      this.#resizeObserver?.disconnect();
+      this.#stopSlideshow();
+      this.#closeZoomPopover();
+      this.#releaseObjectUrl();
+      this.#closeDialog();
+    }
+
+    onWindowClosed() {
+      this.#loadSequence += 1;
+      this.#stopSlideshow();
+      this.#closeZoomPopover();
+      this.#closeDialog();
+      this.#releaseObjectUrl();
+      this.#image.removeAttribute("src");
+      this.#node = null;
+    }
+
+    showHome() {
+      this.#loadSequence += 1;
+      this.#stopSlideshow();
+      this.#closeZoomPopover();
+      this.#releaseObjectUrl();
+      this.#node = null;
+      this.#image.removeAttribute("src");
+      this.#imageWrap.hidden = true;
+      this.#home.hidden = false;
+      this.#shell.setTitle(this.#window, "Windows Photo Viewer");
+      this.#updateToolbar();
+    }
+
+    async open(node) {
+      if (!node || !this.#shell.isImage(node)) {
+        this.showHome();
+        return false;
+      }
+      const file = this.#shell.getFile(node);
+      if (!file) {
+        this.showHome();
+        return false;
+      }
+      const sequence = ++this.#loadSequence;
+      this.#stopSlideshow(false);
+      this.#releaseObjectUrl();
+      this.#node = node;
+      this.#home.hidden = true;
+      this.#imageWrap.hidden = false;
+      this.#loading.hidden = false;
+      this.#zoomMode = "fit";
+      this.#objectUrl = URL.createObjectURL(file);
+      try {
+        await new Promise((resolve, reject) => {
+          this.#image.onload = resolve;
+          this.#image.onerror = () => reject(new Error("The image could not be decoded."));
+          this.#image.src = this.#objectUrl;
+        });
+        if (sequence !== this.#loadSequence) return false;
+        this.#loading.hidden = true;
+        this.#image.alt = node.name;
+        this.#shell.setTitle(this.#window, `${node.name} - Windows Photo Viewer`);
+        this.#applyZoom();
+        this.#updateToolbar();
+        return true;
+      } catch (error) {
+        if (sequence !== this.#loadSequence) return false;
+        console.error("Windows Photo Viewer could not open the image.", error);
+        this.#loading.hidden = true;
+        window.alert("Windows Photo Viewer can't open this picture.");
+        this.showHome();
+        return false;
+      }
+    }
+
+    #bindEvents() {
+      const options = { signal: this.#listeners.signal };
+      this.#window.addEventListener("click", (event) => {
+        if (event.target.closest("[data-photo-browse], [data-photo-home]")) {
+          this.#closeZoomPopover();
+          this.#showOpenDialog();
+          return;
+        }
+        if (event.target.closest("[data-photo-zoom-button]")) {
+          this.#setZoomPopoverOpen(this.#zoomPopover.hidden);
+          return;
+        }
+        const action = event.target.closest("[data-photo-action]")?.dataset.photoAction;
+        if (action) {
+          if (!event.target.closest("[data-photo-zoom-popover]")) this.#closeZoomPopover();
+          void this.#runAction(action);
+        }
+      }, options);
+      document.addEventListener("pointerdown", (event) => {
+        if (this.#zoomPopover.hidden || this.#zoomPopover.contains(event.target) || this.#zoomButton.contains(event.target)) return;
+        this.#closeZoomPopover();
+      }, { ...options, capture: true });
+      document.addEventListener("fullscreenchange", () => {
+        if (document.fullscreenElement === this.#imageWrap) {
+          this.#zoomMode = "fit";
+          requestAnimationFrame(() => this.#applyZoom());
+        }
+        this.#updateToolbar();
+      }, options);
+      this.#zoomSlider.addEventListener("input", () => {
+        if (!this.#node) return;
+        this.#zoomMode = "custom";
+        this.#customScale = Number(this.#zoomSlider.value) / 100;
+        this.#applyZoom();
+      }, options);
+      window.addEventListener("keydown", (event) => {
+        if (this.#window.hidden || this.#window.classList.contains("minimized") || !this.#window.classList.contains("active")) return;
+        if (event.target.closest("input, textarea, select")) return;
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          void this.#navigate(-1);
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          void this.#navigate(1);
+        } else if (event.key === "Delete" && this.#node) {
+          event.preventDefault();
+          void this.#deleteCurrent();
+        } else if (event.key === "Escape" && !this.#zoomPopover.hidden) {
+          event.preventDefault();
+          this.#closeZoomPopover();
+        } else if (event.key === "Escape" && this.#slideshowTimer) {
+          event.preventDefault();
+          this.#stopSlideshow();
+        }
+      }, options);
+    }
+
+    async #runAction(action) {
+      if (action === "previous") await this.#navigate(-1);
+      if (action === "next") await this.#navigate(1);
+      if (action === "fit") {
+        this.#zoomMode = "fit";
+        this.#applyZoom();
+      }
+      if (action === "actual") {
+        this.#zoomMode = "actual";
+        this.#applyZoom();
+      }
+      if (action === "zoom-in") this.#adjustZoom(0.1);
+      if (action === "zoom-out") this.#adjustZoom(-0.1);
+      if (action === "fullscreen") await this.#toggleFullscreen();
+      if (action === "rotate-left") await this.#rotate(-1);
+      if (action === "rotate-right") await this.#rotate(1);
+      if (action === "delete") await this.#deleteCurrent();
+    }
+
+    #setZoomPopoverOpen(open) {
+      this.#zoomPopover.hidden = !open;
+      this.#zoomButton.setAttribute("aria-expanded", String(open));
+      if (open) this.#zoomSlider.focus({ preventScroll: true });
+    }
+
+    #closeZoomPopover() {
+      this.#setZoomPopoverOpen(false);
+    }
+
+    async #toggleFullscreen() {
+      if (!this.#node || !this.#imageWrap.requestFullscreen) return;
+      try {
+        if (document.fullscreenElement === this.#imageWrap) {
+          await document.exitFullscreen();
+          return;
+        }
+        if (document.fullscreenElement) await document.exitFullscreen();
+        this.#zoomMode = "fit";
+        await this.#imageWrap.requestFullscreen();
+        this.#applyZoom();
+      } catch (error) {
+        console.warn("Windows Photo Viewer could not enter full screen.", error);
+      }
+    }
+
+    #siblings() {
+      if (!this.#node?.parentPath) return [];
+      return this.#shell.listImages(this.#node.parentPath)
+        .sort((first, second) => first.name.localeCompare(second.name, undefined, { sensitivity: "base", numeric: true }));
+    }
+
+    async #navigate(direction, wrap = false) {
+      const siblings = this.#siblings();
+      if (!this.#node || siblings.length === 0) return;
+      const wasPlaying = Boolean(this.#slideshowTimer);
+      const currentIndex = siblings.indexOf(this.#node);
+      if (currentIndex < 0) {
+        await this.open(siblings[0]);
+        if (wasPlaying) this.#startSlideshow();
+        return;
+      }
+      let nextIndex = currentIndex + direction;
+      if (wrap) nextIndex = (nextIndex + siblings.length) % siblings.length;
+      if (nextIndex < 0 || nextIndex >= siblings.length) return;
+      await this.open(siblings[nextIndex]);
+      if (wasPlaying) this.#startSlideshow();
+    }
+
+    #applyZoom() {
+      if (!this.#node || !this.#image.naturalWidth || !this.#image.naturalHeight) return;
+      const availableWidth = Math.max(1, this.#imageWrap.clientWidth - 36);
+      const availableHeight = Math.max(1, this.#imageWrap.clientHeight - 36);
+      let scale = this.#customScale;
+      if (this.#zoomMode === "fit") {
+        scale = Math.min(1, availableWidth / this.#image.naturalWidth, availableHeight / this.#image.naturalHeight);
+      } else if (this.#zoomMode === "actual") {
+        scale = 1;
+      }
+      scale = clamp(scale, 0.1, 3);
+      this.#customScale = scale;
+      this.#image.style.width = `${Math.max(1, Math.round(this.#image.naturalWidth * scale))}px`;
+      this.#image.style.height = `${Math.max(1, Math.round(this.#image.naturalHeight * scale))}px`;
+      this.#zoomSlider.value = String(Math.round(scale * 100));
+      this.#zoomSlider.title = `${Math.round(scale * 100)}%`;
+    }
+
+    #adjustZoom(delta) {
+      if (!this.#node) return;
+      this.#zoomMode = "custom";
+      this.#customScale = clamp(this.#customScale + delta, 0.1, 3);
+      this.#applyZoom();
+    }
+
+    #toggleSlideshow() {
+      if (!this.#node) return;
+      if (this.#slideshowTimer) this.#stopSlideshow();
+      else this.#startSlideshow();
+    }
+
+    #startSlideshow() {
+      this.#stopSlideshow(false);
+      if (!this.#node || this.#siblings().length < 2) {
+        this.#updateToolbar();
+        return;
+      }
+      this.#slideshowTimer = window.setInterval(() => {
+        void this.#navigate(1, true);
+      }, SLIDESHOW_INTERVAL);
+      this.#updateToolbar();
+    }
+
+    #stopSlideshow(update = true) {
+      window.clearInterval(this.#slideshowTimer);
+      this.#slideshowTimer = 0;
+      if (update) this.#updateToolbar();
+    }
+
+    async #rotate(direction) {
+      if (!this.#node || !this.#image.naturalWidth || !this.#image.naturalHeight) return;
+      const node = this.#node;
+      const sourceWidth = this.#image.naturalWidth;
+      const sourceHeight = this.#image.naturalHeight;
+      const canvas = document.createElement("canvas");
+      canvas.width = sourceHeight;
+      canvas.height = sourceWidth;
+      const context = canvas.getContext("2d");
+      context.save();
+      if (direction > 0) {
+        context.translate(canvas.width, 0);
+        context.rotate(Math.PI / 2);
+      } else {
+        context.translate(0, canvas.height);
+        context.rotate(-Math.PI / 2);
+      }
+      context.drawImage(this.#image, 0, 0);
+      context.restore();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) return;
+      this.#ignoreFileSystemChange = true;
+      const updated = this.#shell.updateImage(node, blob);
+      this.#ignoreFileSystemChange = false;
+      if (updated) await this.open(node);
+    }
+
+    async #deleteCurrent() {
+      if (!this.#node) return;
+      const node = this.#node;
+      if (!window.confirm(`Are you sure you want to move “${node.name}” to the Recycle Bin?`)) return;
+      const siblings = this.#siblings();
+      const index = siblings.indexOf(node);
+      const next = siblings[index + 1] ?? siblings[index - 1] ?? null;
+      this.#ignoreFileSystemChange = true;
+      this.#shell.trash(node);
+      this.#ignoreFileSystemChange = false;
+      if (next) await this.open(next);
+      else this.showHome();
+    }
+
+    #handleFileSystemChange() {
+      if (this.#ignoreFileSystemChange || !this.#node) return;
+      const stillExists = this.#shell.list(this.#node.parentPath).includes(this.#node);
+      if (!stillExists) this.showHome();
+      else this.#updateToolbar();
+    }
+
+    #updateToolbar() {
+      const hasImage = Boolean(this.#node);
+      const siblings = hasImage ? this.#siblings() : [];
+      const index = hasImage ? siblings.indexOf(this.#node) : -1;
+      this.#window.querySelectorAll("[data-photo-action]").forEach((button) => {
+        const action = button.dataset.photoAction;
+        let disabled = !hasImage;
+        if (action === "previous") disabled = !hasImage || index <= 0;
+        if (action === "next") disabled = !hasImage || index < 0 || index >= siblings.length - 1;
+        if (action === "slideshow") disabled = !hasImage || siblings.length < 2;
+        if (action === "more") disabled = true;
+        button.disabled = disabled;
+        if (action === "fullscreen") {
+          const fullscreen = document.fullscreenElement === this.#imageWrap;
+          button.setAttribute("aria-pressed", String(fullscreen));
+          button.title = fullscreen ? "Exit full screen" : "View full screen";
+          button.setAttribute("aria-label", button.title);
+        }
+        if (action === "slideshow") {
+          const playing = Boolean(this.#slideshowTimer);
+          button.setAttribute("aria-pressed", String(playing));
+          button.classList.toggle("is-playing", playing);
+          button.title = playing ? "Pause slideshow" : "Play slideshow";
+          button.setAttribute("aria-label", button.title);
+        }
+      });
+      this.#zoomSlider.disabled = !hasImage;
+    }
+
+    #showOpenDialog() {
+      const dialog = createElement("section", { className: "photo-viewer-dialog", role: "dialog", "aria-label": "Open picture" });
+      const heading = createElement("h2", { text: "Open picture" });
+      const folders = createElement("div", { className: "photo-viewer-dialog__folders" });
+      const list = createElement("div", { className: "photo-viewer-dialog__list", role: "listbox" });
+      const actions = createElement("div", { className: "photo-viewer-dialog__actions" });
+      const cancel = createElement("button", { type: "button", text: "Cancel" });
+      actions.append(cancel);
+      dialog.append(heading, folders, list, actions);
+      this.#dialogLayer.hidden = false;
+      this.#dialogLayer.replaceChildren(dialog);
+
+      const render = (path) => {
+        folders.querySelectorAll("button").forEach((button) => button.classList.toggle("default", button.dataset.path === path));
+        const images = this.#shell.listImages(path);
+        if (!images.length) {
+          list.replaceChildren(createElement("p", { className: "photo-viewer-dialog__empty", text: "No pictures in this folder." }));
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        images.forEach((node) => {
+          const item = createElement("button", { type: "button", className: "photo-viewer-dialog__item" }, [
+            createImageIcon(),
+            createElement("span", { text: node.name })
+          ]);
+          item.addEventListener("click", () => {
+            this.#closeDialog();
+            void this.open(node);
+          });
+          fragment.append(item);
+        });
+        list.replaceChildren(fragment);
+      };
+
+      this.#shell.writableFolders().forEach((path) => {
+        const button = createElement("button", { type: "button", text: path.slice(1), dataset: { path } });
+        button.addEventListener("click", () => render(path));
+        folders.append(button);
+      });
+      cancel.addEventListener("click", () => this.#closeDialog(), { once: true });
+      render("/Pictures");
+      cancel.focus({ preventScroll: true });
+    }
+
+    #closeDialog() {
+      if (!this.#dialogLayer) return;
+      this.#dialogLayer.hidden = true;
+      this.#dialogLayer.replaceChildren();
+    }
+
+    #releaseObjectUrl() {
+      if (!this.#objectUrl) return;
+      URL.revokeObjectURL(this.#objectUrl);
+      this.#objectUrl = "";
+    }
+  }
+
+  window.Windows7PhotoViewerApp = Windows7PhotoViewerApp;
+})();

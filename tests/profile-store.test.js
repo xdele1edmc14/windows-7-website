@@ -122,6 +122,7 @@ test("restore rebuilds canonical desktop and recycle arrays with file contents",
       desktopAutoArrange: true,
       desktopAlignToGrid: false,
       wallpaper: "blob:wallpaper",
+      themeId: "nature",
       volume: 17,
       pinnedItems: [{ type: "app", appName: "notepad" }, { type: "node", nodeId: "note-1" }]
     }
@@ -140,6 +141,7 @@ test("restore rebuilds canonical desktop and recycle arrays with file contents",
   assert.equal(note.file.name, "remember-me.txt");
   assert.equal(await note.file.text(), "remember me");
   assert.equal(note.meta.createdAt instanceof Date, true);
+  assert.equal(restored.settings.themeId, "nature");
   assert.deepEqual(restored.settings.pinnedItems, [
     { type: "app", appName: "notepad" },
     { type: "node", nodeId: "note-1" }
@@ -188,6 +190,7 @@ test("settings normalization clamps invalid values to safe defaults", () => {
       desktopAutoArrange: true,
       desktopAlignToGrid: false,
       wallpaper: "./assets/img0.png",
+      themeId: "windows-7",
       volume: 100,
       pinnedItems: [
         { type: "app", appName: "paint" },
@@ -196,6 +199,13 @@ test("settings normalization clamps invalid values to safe defaults", () => {
       apps: {}
     }
   );
+});
+
+test("settings normalization preserves approved themes and rejects unknown identifiers", () => {
+  assert.equal(normalizeProfileSettings({ themeId: "architecture" }).themeId, "architecture");
+  assert.equal(normalizeProfileSettings({ themeId: "nature" }).themeId, "nature");
+  assert.equal(normalizeProfileSettings({ themeId: "unknown" }).themeId, "windows-7");
+  assert.equal(normalizeProfileSettings({}).themeId, "windows-7");
 });
 
 const deferred = () => {
