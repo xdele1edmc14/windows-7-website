@@ -2,76 +2,7 @@
   "use strict";
 
   const { closeAeroWindow, openAeroWindow } = window.Windows7AeroWindowMotion;
-
-  const ASSETS = Object.freeze({
-    // Document-relative URLs work both from file:/// and from a web server,
-    // including deployments mounted below the server root.
-    bootAnimation: "./assets/STARTLUP_ANIMATION.apng",
-    biosAudio: "./assets/startup sound.mp3",
-    startupAudio: "./assets/windows-7-startup.mp3",
-    shutdownAudio: "./assets/windows_7_shut_down.mp3",
-    loginAudio: "./assets/login.mp3",
-    criticalStopAudio: "./assets/Windows Critical Stop.wav",
-    navigationAudio: "./assets/Windows Navigation Start.wav",
-    busy: "./assets/aero_busy.apng",
-    deskView: "./assets/pc.png",
-    deskAudio: "./assets/pc.mp3",
-    wallpaper: "./assets/img0.png",
-    loginWallpaper: "./assets/login_screen_wallpaper.jpg",
-    userAvatar: "./assets/user_icon.png",
-    startOrb: "./assets/start_menu_orb_unpressed.png",
-    startOrbHover: "./assets/start_menu_orb_hovered.png",
-    startOrbPressed: "./assets/start_menu_orb_pressed.png",
-    about: "./assets/icons/about.png",
-    chrome: "./assets/icons/Chrome-icon.png",
-    cmd: "./assets/icons/cmd.png",
-    calculator: "./assets/icons/calculator.png",
-    notepad: "./assets/icons/notepad.png",
-    paint: "./assets/icons/paint.png",
-    photoViewer: "./assets/icons/image.png",
-    imageFile: "./assets/icons/image.png",
-    imageFileFallback: "./assets/icons/image.ico",
-    documents: "./assets/icons/documents.ico",
-    pictures: "./assets/icons/pictures.ico",
-    music: "./assets/icons/music.ico",
-    computer: "./assets/icons/computer.ico",
-    controlPanel: "./assets/icons/control_panel.ico",
-    defaultPrograms: "./assets/icons/defaultprograms.ico",
-    help: "./assets/icons/helpandsupport.ico",
-    networkIcon: "./assets/icons/network.png",
-    networkTypeIcon: "./assets/icons/chair.png",
-    speakerHardware: "./assets/icons/speaker.png",
-    volumeFull: "./assets/icons/Volfull.png",
-    volumeMid: "./assets/icons/VolMid.png",
-    volumeLow: "./assets/icons/VolLow.png",
-    volumeMuted: "./assets/icons/novol.png",
-    folderEmpty: "./assets/icons/Folder_empty.png",
-    folderFull: "./assets/icons/Folder_Full.png",
-    recycleEmpty: "./assets/icons/recycle_empty.png",
-    recycleFull: "./assets/icons/recycle_full.png",
-    textFile: "./assets/icons/textfile.png",
-    quickAccess: "./assets/icons/quick access.ico",
-    desktop: "./assets/icons/desktop.ico",
-    downloads: "./assets/icons/downloads.ico",
-    videos: "./assets/icons/videos.ico",
-    systemDrive: "./assets/icons/system.ico",
-    dvdDrive: "./assets/icons/dvddrive.ico",
-    accessDenied: "./assets/icons/access_denied.ico",
-    display: "./assets/display.png",
-    rightArrow: "./assets/rightarrow.png",
-    contextDisplay: "./assets/icons/networkicon.png",
-    contextGadgets: "./assets/icons/gadgets.png",
-    contextPersonalize: "./assets/icons/personalize.png",
-    cursorArrow: "./cursors/aero_arrow-001.png",
-    cursorLink: "./cursors/aero_link-001.png",
-    cursorMove: "./cursors/aero_move-001.png",
-    cursorHorizontal: "./cursors/aero_ew-001.png",
-    cursorVertical: "./cursors/aero_ns-001.png",
-    cursorDiagonalDown: "./cursors/aero_nwse-001.png",
-    cursorDiagonalUp: "./cursors/aero_nesw-001.png",
-    cursorHelp: "./cursors/aero_helpsel-001.png",
-    cursorUnavailable: "./cursors/aero_unavail-001.png"
-  });
+  const { ASSETS, NON_THEME_BOOT_ASSETS } = window.Windows7BootAssets;
 
   const LOGIN_SENTINEL = "••••••••";
   const REQUIRED_PASSWORD = "12345";
@@ -5757,20 +5688,20 @@
     }
 
     async #preloadDesktopAssets() {
-      const imagePaths = Object.entries(ASSETS)
-        .filter(([name]) => !name.endsWith("Audio"))
-        .map(([, path]) => path);
-
-      const results = await Promise.allSettled([
-        ...imagePaths.map((path) => this.#preloadImage(path)),
-        this.#preloadAudio(this.#biosAudio),
-        this.#preloadAudio(this.#startupAudio),
-        this.#preloadAudio(this.#shutdownAudio),
-        this.#preloadAudio(this.#loginAudio),
-        this.#preloadAudio(this.#criticalStopAudio),
-        this.#preloadAudio(this.#navigationAudio),
-        this.#preloadAudio(this.#deskAudio)
+      const audioByPath = new Map([
+        [ASSETS.biosAudio, this.#biosAudio],
+        [ASSETS.startupAudio, this.#startupAudio],
+        [ASSETS.shutdownAudio, this.#shutdownAudio],
+        [ASSETS.loginAudio, this.#loginAudio],
+        [ASSETS.criticalStopAudio, this.#criticalStopAudio],
+        [ASSETS.navigationAudio, this.#navigationAudio],
+        [ASSETS.deskAudio, this.#deskAudio]
       ]);
+
+      const results = await Promise.allSettled(NON_THEME_BOOT_ASSETS.map((path) => {
+        const audio = audioByPath.get(path);
+        return audio ? this.#preloadAudio(audio) : this.#preloadImage(path);
+      }));
       const failures = results.filter(({ status }) => status === "rejected");
 
       if (failures.length > 0) {

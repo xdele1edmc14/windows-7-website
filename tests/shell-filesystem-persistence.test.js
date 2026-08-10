@@ -5,12 +5,13 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const Windows7AeroWindowMotion = require("../aero-window-motion.js");
+const Windows7BootAssets = require("../boot-assets.js");
 const Windows7Profile = require("../profile-store.js");
 
 const loadShellApi = () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
   const sandbox = {
-    window: { Windows7AeroWindowMotion, Windows7Profile },
+    window: { Windows7AeroWindowMotion, Windows7BootAssets, Windows7Profile },
     document: { getElementById: () => null },
     console,
     performance,

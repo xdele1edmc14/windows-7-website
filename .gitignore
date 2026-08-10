@@ -1,3 +1,19 @@
 node_modules/
 .agents/
+.claude/
 *.ico
+!assets/icons/access_denied.ico
+!assets/icons/computer.ico
+!assets/icons/control_panel.ico
+!assets/icons/defaultprograms.ico
+!assets/icons/desktop.ico
+!assets/icons/documents.ico
+!assets/icons/downloads.ico
+!assets/icons/dvddrive.ico
+!assets/icons/helpandsupport.ico
+!assets/icons/image.ico
+!assets/icons/music.ico
+!assets/icons/pictures.ico
+!assets/icons/quick access.ico
+!assets/icons/system.ico
+!assets/icons/videos.ico
