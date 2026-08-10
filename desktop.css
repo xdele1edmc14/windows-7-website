@@ -2714,8 +2714,8 @@
   border-top: 1px solid rgba(255,255,255,.35) !important;
   background:
     linear-gradient(118deg, transparent 0 28%, rgba(255,255,255,.13) 42%, transparent 56%),
-    linear-gradient(180deg, rgba(var(--theme-accent-rgb),.42) 0, rgba(var(--theme-accent-rgb),.66) 52%, rgba(var(--theme-accent-rgb),.82) 100%),
-    linear-gradient(var(--theme-shell-mid), var(--theme-shell-dark)) !important;
+    linear-gradient(180deg, rgba(140,166,185,.42) 0, rgba(76,103,127,.46) 52%, rgba(37,60,80,.58) 100%),
+    rgba(34,56,76,.42) !important;
   -webkit-backdrop-filter: blur(6px) saturate(96%) !important;
   backdrop-filter: blur(6px) saturate(96%) !important;
   box-shadow:

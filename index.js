@@ -4074,7 +4074,7 @@
         boxSizing: "border-box",
         padding: "3px 10px 3px 58px",
         borderTop: "1px solid rgba(255, 255, 255, 0.65)",
-        background: "linear-gradient(to bottom, #5E8FB7B3 0%, #5180A678 48%, rgba(5, 36, 73, 0.66) 100%)",
+        background: "linear-gradient(to bottom, rgba(140, 166, 185, 0.42), rgba(37, 60, 80, 0.58))",
         boxShadow: "0 -1px 8px rgba(0, 0, 0, 0.45)"
       });
 
