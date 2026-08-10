@@ -869,7 +869,7 @@
   position: absolute;
   z-index: 2147482999;
   left: 0;
-  bottom: 45px;
+  bottom: 40px;
   box-sizing: border-box;
   width: min(440px, calc(100vw - 8px));
   height: min(478px, calc(100vh - 51px));
@@ -2529,7 +2529,7 @@
   [data-theme="nature"],
   [data-theme="windows-7-basic"]
 ) .start-menu {
-  bottom: 45px;
+  bottom: 40px;
   width: min(402px, calc(100vw - 4px));
   height: min(414px, calc(100vh - 46px));
   min-height: 300px;
