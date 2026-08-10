@@ -5613,6 +5613,7 @@
         boxSizing: "border-box",
         fontFamily: '"Segoe UI", Tahoma, sans-serif',
         fontSize: "15px",
+        color: "#1b1b1b",
         cursor: "text"
       });
       const submit = createElement("button", {
