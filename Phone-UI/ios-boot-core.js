@@ -17,10 +17,10 @@
     "Ciao",
     "Hallo",
     "Olá",
-    "Namaste",
-    "Konnichiwa",
-    "Guten Tag",
-    "Salam"
+    "你好",
+    "こんにちは",
+    "안녕하세요",
+    "مرحبا"
   ]);
 
   const GREETING_LANGUAGES = Object.freeze([
@@ -30,10 +30,10 @@
     "it",
     "de",
     "pt",
-    "hi-Latn",
-    "ja-Latn",
-    "de",
-    "ar-Latn"
+    "zh-Hans",
+    "ja",
+    "ko",
+    "ar"
   ]);
 
   function preloadImageAssets(urls, ImageCtor = globalThis.Image) {

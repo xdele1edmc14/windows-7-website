@@ -1,9 +1,9 @@
 (function initializePhone(window, document) {
   "use strict";
-  const { clamp, rubberBand, resolvePage, shouldClose, releaseVelocity, getCloseFrame, mixFrame, cubicBezier } = window.IOSHomeCore;
-  const { animateSpring, waitForBootReady } = window.IOSBootCore;
+  const { clamp, rubberBand, resolvePage, classifyHomeGesture, shouldClose, releaseVelocity, getCloseFrame, mixFrame, cubicBezier } = window.IOSHomeCore;
+  const { GREETINGS, GREETING_LANGUAGES, animateSpring, waitForBootReady } = window.IOSBootCore;
   const $ = (selector) => document.querySelector(selector);
-  const root = $("#ios-app"), frame = $(".iphone-frame"), home = $("#home-screen");
+  const root = $("#ios-app"), frame = $(".iphone-frame"), home = $("#home-screen"), welcome = $("#welcome-screen");
   const depth = $(".home-depth"), track = $("#page-track"), lock = $("#lock-screen");
   const surface = $("#app-surface"), spotlight = $(".spotlight"), input = $(".spotlight input");
   const removeBackdrop = $(".remove-backdrop"), announcement = $("#announcement");
@@ -14,14 +14,14 @@
     el: root, id: "com.nullpointer.iphone", name: "iPhone", theme: "ios",
     touch: { fastClicks: false, tapHold: false, disableContextMenu: true }
   }) : null;
-  if (!framework7) console.warn("Framework7 CDN unavailable; the boot screen will offer Retry.");
+  if (!framework7) console.warn("Bundled Framework7 runtime unavailable; the boot screen will offer Retry.");
 
   let W = 393, H = 852, scale = 1, screen = "boot", page = 0, pageX = 0;
-  let closingApp = false, unlocking = false;
+  let closingApp = false, openingHome = false;
   let editing = false, activeApp = null, origin = null, appFrame = null;
-  let lockY = 0, searchProgress = 0, searchTarget = 0, searchInvoker = null;
+  let welcomeY = 0, lockY = -H, searchProgress = 0, searchTarget = 0, searchInvoker = null;
   let removeId = null, removeInvoker = null, gesture = null, holdTimer = 0;
-  let suppressClickUntil = 0, lastClock = "";
+  let suppressClickUntil = 0, lastClock = "", greetingIndex = 0, greetingTimer = 0;
   const animations = new Map();
   // User-specified fast-out, zero-overshoot open. 400ms is within the 350–450ms brief.
   const openEase = cubicBezier(.2, .8, .2, 1);
@@ -85,8 +85,8 @@
     const clock = document.createElement("div");
     clock.className = "widget clock-widget";
     clock.setAttribute("aria-label", "Clock");
-    clock.innerHTML = '<div class="clock-face"><span class="clock-city">CUP</span><span class="clock-hand clock-hour"></span><span class="clock-hand clock-minute"></span><span class="clock-hand clock-second"></span><span class="clock-pin"></span></div><span class="widget-caption">Clock</span>';
-    const face = clock.querySelector(".clock-face");
+    clock.innerHTML = '<div class="clock-bezel"><div class="clock-dial"><span class="clock-city">CUP</span><span class="clock-hand clock-hour"></span><span class="clock-hand clock-minute"></span><span class="clock-hand clock-second"></span><span class="clock-pin"></span></div></div><span class="widget-caption">Clock</span>';
+    const face = clock.querySelector(".clock-dial");
     for (let i = 0; i < 60; i++) {
       const tick = document.createElement("span");
       tick.className = "clock-tick" + (i % 5 ? "" : " major");
@@ -185,13 +185,83 @@
     syncPages();
     spring("page", pageX, -page * W, velocity, renderPage);
   }
-  function renderLock(y) {
-    lockY = y;
-    lock.style.transform = "translate3d(0," + y + "px,0)";
-    renderDepth(1 - clamp(-y / (H * .45)));
+  function paintGreeting() {
+    const greeting = $(".welcome-greeting");
+    greeting.textContent = GREETINGS[greetingIndex];
+    greeting.lang = GREETING_LANGUAGES[greetingIndex];
+    greeting.dir = GREETING_LANGUAGES[greetingIndex] === "ar" ? "rtl" : "auto";
+    greeting.classList.remove("is-writing");
+    // Restart the one-shot write-on mask after replacing the language.
+    void greeting.offsetWidth;
+    greeting.classList.add("is-writing");
   }
-  function finishUnlock() {
-    unlocking = false;
+  function startGreetingCycle() {
+    clearInterval(greetingTimer);
+    greetingIndex = 0;
+    paintGreeting();
+    if (!reduced.matches) greetingTimer = setInterval(() => {
+      greetingIndex = (greetingIndex + 1) % GREETINGS.length;
+      paintGreeting();
+    }, 1900); // Estimated from the supplied setup recording.
+  }
+  function stopGreetingCycle() { clearInterval(greetingTimer); greetingTimer = 0; }
+  function renderWelcome(y) {
+    welcomeY = Math.min(0, y);
+    const progress = clamp(-welcomeY / H);
+    welcome.style.transform = "translate3d(0," + welcomeY + "px,0)";
+    welcome.style.opacity = 1 - progress * .16;
+    renderDepth(1 - progress);
+  }
+  function showWelcome() {
+    welcome.hidden = false;
+    welcome.inert = false;
+    home.inert = true;
+    setScreen("welcome");
+    renderWelcome(0);
+    startGreetingCycle();
+    announce("Hello. Swipe up to open Home Screen.");
+  }
+  function finishWelcome() {
+    openingHome = false;
+    cancel("welcome");
+    stopGreetingCycle();
+    welcome.hidden = true;
+    welcome.inert = true;
+    welcome.style.opacity = "";
+    home.inert = false;
+    setScreen("home");
+    renderDepth(0);
+    announce("Home Screen");
+    $(".search-launcher").focus({ preventScroll: true });
+  }
+  function openHome() {
+    if (screen !== "welcome") return;
+    openingHome = true;
+    spring("welcome", welcomeY, -H, -1, renderWelcome, finishWelcome);
+  }
+  function renderLock(y) {
+    lockY = clamp(y, -H, 0);
+    lock.style.transform = "translate3d(0," + lockY + "px,0)";
+    renderDepth(1 - clamp(-lockY / (H * .45)));
+  }
+  function prepareNotification() {
+    if (!lock.hidden) return;
+    setEditing(false);
+    lock.hidden = false;
+    lock.inert = false;
+    home.inert = true;
+    setScreen("notification");
+    renderLock(-H);
+  }
+  function finishNotificationOpen() {
+    setScreen("notification");
+    renderLock(0);
+    announce("Clock and Notifications");
+  }
+  function openNotification(velocity = 0) {
+    spring("lock", lockY, 0, velocity, renderLock, finishNotificationOpen);
+  }
+  function finishNotificationClose() {
     cancel("lock");
     lock.hidden = true;
     lock.inert = true;
@@ -201,10 +271,9 @@
     announce("Home Screen");
     $(".search-launcher").focus({ preventScroll: true });
   }
-  function unlock() {
-    if (screen !== "lock") return;
-    unlocking = true;
-    spring("lock", lockY, -H, -1, renderLock, finishUnlock);
+  function closeNotification(velocity = -1) {
+    if (screen !== "notification") return;
+    spring("lock", lockY, -H, velocity, renderLock, finishNotificationClose);
   }
 
   function sourceRect(button) {
@@ -344,11 +413,13 @@
     return { x: (event.clientX - rect.x) / scale, y: (event.clientY - rect.y) / scale };
   }
   root.addEventListener("pointerdown", event => {
+    root.dataset.input = "pointer";
     if (screen === "boot" || gesture || !event.isPrimary || (event.pointerType === "mouse" && event.button !== 0) || !removeBackdrop.hidden) return;
     const target = event.target, point = localPoint(event);
     if (target.closest("input, .spotlight-cancel, .delete-badge, .done-button, .page-dot, .search-launcher, .lock-shortcut")) return;
     let mode = "pending";
-    if (screen === "lock") { mode = "lock"; unlocking = false; cancel("lock"); }
+    if (screen === "welcome") { mode = "welcome"; openingHome = false; cancel("welcome"); }
+    else if (screen === "notification") { mode = "notification-dismiss"; cancel("lock"); }
     else if (screen === "app") {
       // Only the bottom handle/44pt gesture strip initiates closing.
       if (!target.closest(".app-home-target")) return;
@@ -357,7 +428,7 @@
       if (target.closest(".app-icon")) return;
       mode = "search-dismiss"; cancel("search");
     } else cancel("page");
-    gesture = { id: event.pointerId, mode, startX: point.x, startY: point.y, lastX: point.x, lastY: point.y, lastTime: event.timeStamp, vx: 0, vy: 0, moved: false, basePage: pageX, baseLock: lockY, baseSearch: searchProgress, baseApp: appFrame ? { ...appFrame } : null };
+    gesture = { id: event.pointerId, mode, startX: point.x, startY: point.y, lastX: point.x, lastY: point.y, lastTime: event.timeStamp, vx: 0, vy: 0, moved: false, basePage: pageX, baseWelcome: welcomeY, baseLock: lockY, baseSearch: searchProgress, baseApp: appFrame ? { ...appFrame } : null };
     const button = target.closest(".app-icon");
     if (mode === "pending" && button && !editing) {
       holdTimer = setTimeout(() => {
@@ -389,10 +460,9 @@
     }
     if (!g.moved || g.held) return;
     if (g.mode === "pending") {
-      if (Math.abs(dx) > Math.abs(dy) * 1.15) g.mode = "page";
-      else if (dy > 0 && g.startY > 38 && g.startY < 260 && !editing) {
-        g.mode = "search-reveal"; prepareSearch();
-      } else g.mode = "ignored"; // Status-bar corners never open Control Center.
+      g.mode = classifyHomeGesture({ width: W, startX: g.startX, startY: g.startY, dx, dy, editing });
+      if (g.mode === "search-reveal") prepareSearch();
+      if (g.mode === "notification-reveal") { prepareNotification(); g.baseLock = -H; }
     }
     if (g.mode === "page") {
       let x = g.basePage + dx;
@@ -400,7 +470,9 @@
       if (x > 0) x = rubberBand(x);
       if (x < end) x = end + rubberBand(x - end);
       renderPage(x);
-    } else if (g.mode === "lock") renderLock(Math.min(0, g.baseLock + dy));
+    } else if (g.mode === "welcome") renderWelcome(Math.min(0, g.baseWelcome + dy));
+    else if (g.mode === "notification-reveal") renderLock(-H + Math.max(0, dy));
+    else if (g.mode === "notification-dismiss") renderLock(g.baseLock + Math.min(0, dy));
     else if (g.mode === "close") renderApp(getCloseFrame({ width: W, height: H, dx, dy: Math.min(0, dy), startFrame: g.baseApp }));
     else if (g.mode === "search-reveal") renderSearch(dy / 160);
     else if (g.mode === "search-dismiss") renderSearch(g.baseSearch + dy / 180);
@@ -422,9 +494,17 @@
       settlePage(cancelled ? page : clamp(target, page - 1, page + 1), vx);
     }
     if (g.mode === "pending" || g.mode === "ignored") settlePage(page); // Every interrupted page settles, even after an ignored vertical drag.
-    if (g.mode === "lock") {
-      if (!cancelled && shouldClose({ distance: -lockY, velocity: -vy })) unlock();
-      else spring("lock", lockY, 0, 0, renderLock);
+    if (g.mode === "welcome") {
+      if (!cancelled && shouldClose({ distance: -welcomeY, velocity: -vy })) openHome();
+      else spring("welcome", welcomeY, 0, 0, renderWelcome);
+    }
+    if (g.mode === "notification-reveal") {
+      if (!cancelled && shouldClose({ distance: lockY + H, velocity: vy })) openNotification(vy);
+      else closeNotification(-Math.abs(vy));
+    }
+    if (g.mode === "notification-dismiss") {
+      if (!cancelled && shouldClose({ distance: -lockY, velocity: -vy })) closeNotification(vy);
+      else openNotification(vy);
     }
     if (g.mode === "close") {
       const distance = g.startY - g.lastY;
@@ -457,7 +537,8 @@
     if (editing && event.target.closest("#home-screen") && !event.target.closest(".done-button, .page-dot")) setEditing(false);
   });
   $(".done-button").addEventListener("click", () => setEditing(false));
-  $(".unlock-target").addEventListener("click", unlock);
+  $(".welcome-target").addEventListener("click", openHome);
+  $(".notification-dismiss-target").addEventListener("click", () => closeNotification());
   $(".app-home-target").addEventListener("click", () => closeApp());
   $(".search-launcher").addEventListener("click", () => settleSearch(true));
   $(".spotlight-cancel").addEventListener("click", () => settleSearch(false));
@@ -478,26 +559,29 @@
     button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
   });
   $('[aria-label="Open Camera"]').addEventListener("click", () => {
-    finishUnlock();
+    finishNotificationClose();
     const button = home.querySelector('[data-app-id="0-1"] .app-icon');
     if (button) openApp(apps.get("0-1"), button);
   });
 
   document.addEventListener("keydown", event => {
+    root.dataset.input = "keyboard";
     if (event.key === "Escape") {
       event.preventDefault();
       if (!removeBackdrop.hidden) dismissRemove();
       else if (!spotlight.hidden) settleSearch(false);
       else if (editing) setEditing(false);
       else if (screen === "app") closeApp();
+      else if (screen === "notification") closeNotification();
     }
-    if (screen === "lock" && event.key === "ArrowUp") { event.preventDefault(); unlock(); }
+    if (screen === "welcome" && event.key === "ArrowUp") { event.preventDefault(); openHome(); }
+    if (screen === "notification" && event.key === "ArrowUp") { event.preventDefault(); closeNotification(); }
     if (screen === "home" && spotlight.hidden && removeBackdrop.hidden && ["ArrowLeft","ArrowRight"].includes(event.key)) {
       event.preventDefault(); settlePage(page + (event.key === "ArrowRight" ? 1 : -1));
     }
     if (screen === "home" && spotlight.hidden && removeBackdrop.hidden && event.key === "F2") { event.preventDefault(); setEditing(!editing); }
     // Trap keyboard navigation only inside the currently active modal.
-    const modal = !removeBackdrop.hidden ? $(".remove-sheet") : !spotlight.hidden ? spotlight : screen === "app" ? surface : null;
+    const modal = !removeBackdrop.hidden ? $(".remove-sheet") : !spotlight.hidden ? spotlight : screen === "app" ? surface : screen === "notification" ? lock : null;
     if (event.key === "Tab" && modal) {
       const controls = [...modal.querySelectorAll("button, input")].filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
       const first = controls[0], last = controls.at(-1);
@@ -544,7 +628,8 @@
       if (closingApp) finishClose();
       else { renderApp(fullFrame()); $(".app-home-target").focus({ preventScroll: true }); }
     }
-    else if (screen === "lock") { if (unlocking) finishUnlock(); else renderLock(0); }
+    else if (screen === "welcome") { if (openingHome) finishWelcome(); else renderWelcome(0); }
+    else if (screen === "notification") renderLock(lockY > -H * .5 ? 0 : -H);
     else renderDepth(0);
     if (!spotlight.hidden) {
       if (!searchTarget) { hideSearchImmediately(); searchInvoker?.focus({ preventScroll: true }); }
@@ -558,7 +643,8 @@
     if (animations.has("app")) { cancel("app"); if (screen === "app") { if (closingApp) finishClose(); else renderApp(fullFrame()); } }
     cancel("page"); renderPage(-page * W);
     if (animations.has("search")) { cancel("search"); settleSearch(Boolean(searchTarget)); }
-    if (animations.has("lock")) { cancel("lock"); if (unlocking) finishUnlock(); else renderLock(0); }
+    if (animations.has("welcome")) { cancel("welcome"); if (openingHome) finishWelcome(); else renderWelcome(0); }
+    if (animations.has("lock")) { cancel("lock"); if (screen === "notification" && lockY <= -H * .5) finishNotificationClose(); else renderLock(0); }
   });
   window.addEventListener("blur", () => {
     if (gesture) endGesture({ pointerId: gesture.id, timeStamp: performance.now() }, true);
@@ -578,13 +664,12 @@
       await waitForBootReady(window.IOSBootLoader.prepareAssets({ document, framework: window.Framework7 }), {
         minimumDelayMs: Math.max(0, 5000 - performance.now())
       });
-      setScreen("lock");
+      showWelcome();
       clearTimeout(window.iosBootWatchdog);
-      lock.inert = false;
       bootScreen.setAttribute("aria-busy", "false");
       bootScreen.classList.add("is-ready");
       setTimeout(() => { bootScreen.hidden = true; }, reduced.matches ? 0 : 450);
-      announce("iPhone ready. Swipe up to unlock.");
+      announce("iPhone ready. Hello. Swipe up to open.");
     } catch (error) {
       clearTimeout(window.iosBootWatchdog);
       bootScreen.setAttribute("aria-busy", "false");

@@ -30,6 +30,22 @@
     return clamp(Math.round(-projected / width), 0, Math.floor(count) - 1);
   }
 
+  // Gesture routing is based on logical iPhone points so resizing the host
+  // cannot change which system surface owns a pull. The 50pt status region and
+  // 58% left-side split are visual estimates from the supplied references.
+  function classifyHomeGesture({ width, startX, startY, dx, dy, editing = false }) {
+    width = Math.max(0, finite(width, 393));
+    startX = finite(startX);
+    startY = finite(startY);
+    dx = finite(dx);
+    dy = finite(dy);
+    if (Math.abs(dx) > Math.abs(dy) * 1.15) return "page";
+    if (editing || dy <= 0) return "ignored";
+    if (startY <= 50) return startX < width * 0.58 ? "notification-reveal" : "ignored";
+    if (startY < 260) return "search-reveal";
+    return "ignored";
+  }
+
   // Tunable gesture thresholds, not measured platform constants. Upward is positive.
   // A downward velocity contributes no forward projection; callers expire stale samples.
   function shouldClose({ distance = 0, velocity = 0 }) {
@@ -102,5 +118,5 @@
     };
   }
 
-  return Object.freeze({ clamp, rubberBand, resolvePage, shouldClose, releaseVelocity, getCloseFrame, mixFrame, cubicBezier });
+  return Object.freeze({ clamp, rubberBand, resolvePage, classifyHomeGesture, shouldClose, releaseVelocity, getCloseFrame, mixFrame, cubicBezier });
 });

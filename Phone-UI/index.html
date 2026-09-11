@@ -9,17 +9,17 @@
   <link rel="icon" href="data:,">
   <link rel="preload" as="image" href="./wallpaper.png">
   <link rel="preload" as="image" href="../assets/Phone-UI/apple_logo.jpg">
-  <!-- Critical boot styling paints even while CDN styles/scripts are downloading. -->
+  <!-- Critical boot styling paints while the local UI bundles are loading. -->
   <style>
     html, body { margin: 0; background: #000; }
     .phone-boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #000; color: #fff; }
     .phone-boot > img { width: 164px; max-width: 45%; }
     .phone-boot [hidden] { display: none !important; }
   </style>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/framework7@9.1.2/framework7-bundle.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/framework7-icons@5.0.5/css/framework7-icons.css">
-  <link rel="stylesheet" href="./main.css">
-  <script src="https://cdn.jsdelivr.net/npm/framework7@9.1.2/framework7-bundle.min.js" defer></script>
+  <link rel="stylesheet" href="./vendor/framework7/framework7-bundle.min.css" data-boot-critical>
+  <link rel="stylesheet" href="./vendor/framework7-icons/css/framework7-icons.css" data-boot-critical>
+  <link rel="stylesheet" href="./main.css" data-boot-critical>
+  <script src="./vendor/framework7/framework7-bundle.min.js" defer></script>
   <script src="./ios-boot-core.js" defer></script>
   <script src="./boot-loader.js" defer></script>
   <script src="./home-core.js" defer></script>
@@ -34,6 +34,14 @@
           <div class="boot-error" role="alert" hidden><p>Unable to start iPhone.</p><button type="button" class="boot-retry">Try again</button></div>
         </section>
         <div class="wallpaper" aria-hidden="true"></div>
+        <section id="welcome-screen" class="welcome-screen" aria-label="Hello" hidden inert>
+          <div class="welcome-backdrop" aria-hidden="true"></div>
+          <p class="welcome-greeting" lang="en" aria-live="polite">Hello</p>
+          <button class="welcome-target" aria-label="Open Home Screen. Swipe up or press Enter.">
+            <span class="welcome-prompt">Swipe up to open</span>
+            <span class="home-indicator"></span>
+          </button>
+        </section>
         <main id="home-screen" class="home-screen" aria-label="Home Screen" inert>
           <div class="home-depth">
             <div class="page-viewport"><div class="page-track" id="page-track"></div></div>
@@ -45,7 +53,7 @@
           </div>
           <button class="done-button glass" hidden>Done</button>
         </main>
-        <section id="lock-screen" class="lock-screen" aria-label="Lock Screen" inert>
+        <section id="lock-screen" class="lock-screen" role="dialog" aria-modal="true" aria-label="Clock and Notifications" hidden inert>
           <div class="wallpaper lock-wallpaper" aria-hidden="true"></div>
           <p class="lock-date"></p>
           <div class="lock-clock" role="img" aria-label="Current time"></div>
@@ -56,7 +64,7 @@
             <span class="notifications"><span></span> 2 Notifications</span>
             <button class="lock-shortcut glass" aria-label="Open Camera"><i class="f7-icons" aria-hidden="true">camera_fill</i></button>
           </div>
-          <button class="unlock-target" aria-label="Unlock iPhone. Swipe up or press Enter."><span class="home-indicator"></span></button>
+          <button class="notification-dismiss-target" aria-label="Close Clock and Notifications. Swipe up or press Enter."><span class="home-indicator"></span></button>
         </section>
         <section class="app-surface" id="app-surface" role="dialog" aria-modal="true" aria-labelledby="app-title" hidden inert>
           <div class="app-content"><span class="app-initial" aria-hidden="true"></span><h1 id="app-title"></h1></div>
@@ -91,7 +99,7 @@
     window.iosBootWatchdog = setTimeout(() => {
       if (document.querySelector('#ios-app').dataset.screen !== 'boot') return;
       document.querySelector('.phone-boot').setAttribute('aria-busy', 'false');
-      document.querySelector('.boot-error p').textContent = 'Loading took too long. Check your connection and try again.';
+      document.querySelector('.boot-error p').textContent = 'Loading took too long. Reload and try again.';
       document.querySelector('.boot-error').hidden = false;
     }, 25000);
   </script>

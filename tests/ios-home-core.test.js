@@ -13,11 +13,26 @@ test("home math is usable through CommonJS and a classic browser script", () => 
   const browser = {};
   browser.window = browser;
   vm.runInNewContext(fs.readFileSync(corePath, "utf8"), browser);
-  for (const name of ["clamp", "rubberBand", "resolvePage", "shouldClose", "releaseVelocity", "getCloseFrame", "mixFrame", "cubicBezier"]) {
+  for (const name of ["clamp", "rubberBand", "resolvePage", "classifyHomeGesture", "shouldClose", "releaseVelocity", "getCloseFrame", "mixFrame", "cubicBezier"]) {
     assert.equal(typeof loadCore()[name], "function");
     assert.equal(typeof browser.IOSHomeCore[name], "function");
   }
   assert.equal(browser.IOSHomeCore.resolvePage({ offset: -300, velocity: 0, width: 393, count: 3 }), 1);
+});
+
+test("vertical pulls route top-left to notifications and lower pulls to Spotlight", () => {
+  const { classifyHomeGesture } = loadCore();
+  const base = { width: 393, dx: 1, dy: 30, editing: false };
+  assert.equal(classifyHomeGesture({ ...base, startX: 50, startY: 24 }), "notification-reveal");
+  assert.equal(classifyHomeGesture({ ...base, startX: 350, startY: 24 }), "ignored");
+  assert.equal(classifyHomeGesture({ ...base, startX: 50, startY: 80 }), "search-reveal");
+  assert.equal(classifyHomeGesture({ ...base, startX: 50, startY: 300 }), "ignored");
+  assert.equal(classifyHomeGesture({ ...base, startX: 50, startY: 24, editing: true }), "ignored");
+});
+
+test("horizontal drags stay page gestures even near the status bar", () => {
+  const { classifyHomeGesture } = loadCore();
+  assert.equal(classifyHomeGesture({ width: 393, startX: 30, startY: 20, dx: 50, dy: 12, editing: false }), "page");
 });
 
 test("clamp preserves in-range values and clips both bounds", () => {

@@ -17,9 +17,9 @@ function fixture(extra = {}) {
   const calls = [];
   const context = {
     ...core, calls, W: 393, H: 852, scale: 1, screen: 'home', page: 1,
-    closingApp: false, unlocking: false, searchTarget: 0, gesture: null,
+    closingApp: false, openingHome: false, welcomeY: 0, lockY: -852, searchTarget: 0, gesture: null,
     frame: { clientWidth: 430, clientHeight: 932 },
-    root: { style: { setProperty() {} }, hasPointerCapture: () => false },
+    root: { dataset: {}, style: { setProperty() {} }, hasPointerCapture: () => false },
     spotlight: { hidden: true }, animations: new Map(),
     searchInvoker: { focus: () => calls.push('search-focus') },
     $: () => ({ focus: () => calls.push('app-focus') }),
@@ -29,7 +29,9 @@ function fixture(extra = {}) {
     renderApp: () => calls.push('render-app'),
     finishClose: () => calls.push('finish-close'),
     renderLock: () => calls.push('render-lock'),
-    finishUnlock: () => calls.push('finish-unlock'),
+    renderWelcome: () => calls.push('render-welcome'),
+    finishWelcome: () => calls.push('finish-welcome'),
+    finishNotificationClose: () => calls.push('finish-notification-close'),
     renderDepth: () => calls.push('depth'),
     renderSearch: value => calls.push(['search', value]),
     hideSearchImmediately: () => calls.push('hide-search'),
@@ -66,11 +68,11 @@ test('resize keeps an open Spotlight visible', () => {
   assert.ok(c.calls.some(call => Array.isArray(call) && call[0] === 'search' && call[1] === 1));
   assert.ok(!c.calls.includes('hide-search'));
 });
-test('resize completes a committed unlock', () => {
-  const c = fixture({ screen: 'lock', unlocking: true });
+test('resize completes a committed Welcome dismissal', () => {
+  const c = fixture({ screen: 'welcome', openingHome: true });
   resize(c);
-  assert.ok(c.calls.includes('finish-unlock'));
-  assert.ok(!c.calls.includes('render-lock'));
+  assert.ok(c.calls.includes('finish-welcome'));
+  assert.ok(!c.calls.includes('render-welcome'));
 });
 test('hidden iframe zero geometry does not corrupt logical dimensions', () => {
   const c = fixture({ frame: { clientWidth: 0, clientHeight: 0 } });

@@ -41,6 +41,19 @@ test('missing Framework7 or failed stylesheet rejects readiness', async () => {
   await assert.rejects(prepareAssets(f.options), /stylesheet/i);
 });
 
+test('the boot gate checks only explicitly critical phone stylesheets', async () => {
+  const f = fixture();
+  let selector = '';
+  f.options.document.querySelectorAll = value => {
+    selector = value;
+    return value === 'link[data-boot-critical]' ? [{ sheet: {} }] : [{ sheet: null }];
+  };
+  const ready = prepareAssets(f.options);
+  f.pending.forEach(image => image.onload());
+  await ready;
+  assert.equal(selector, 'link[data-boot-critical]');
+});
+
 test('stalled asset loading has a bounded failure path', async () => {
   const f = fixture();
   await assert.rejects(prepareAssets({ ...f.options, timeoutMs: 5 }), /timed out/i);

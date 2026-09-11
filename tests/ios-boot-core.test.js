@@ -149,10 +149,10 @@ test("greetings and language metadata preserve the approved display order", asyn
     "Ciao",
     "Hallo",
     "Olá",
-    "Namaste",
-    "Konnichiwa",
-    "Guten Tag",
-    "Salam"
+    "你好",
+    "こんにちは",
+    "안녕하세요",
+    "مرحبا"
   ]);
   assert.deepEqual(GREETING_LANGUAGES, [
     "en",
@@ -161,10 +161,10 @@ test("greetings and language metadata preserve the approved display order", asyn
     "it",
     "de",
     "pt",
-    "hi-Latn",
-    "ja-Latn",
-    "de",
-    "ar-Latn"
+    "zh-Hans",
+    "ja",
+    "ko",
+    "ar"
   ]);
 });
 

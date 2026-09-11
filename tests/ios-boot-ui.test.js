@@ -6,6 +6,7 @@ const path = require("node:path");
 const phoneRoot = path.join(__dirname, "..", "Phone-UI");
 const html = fs.readFileSync(path.join(phoneRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(phoneRoot, "main.css"), "utf8");
+const appSource = fs.readFileSync(path.join(phoneRoot, "app.js"), "utf8");
 
 // Static entry contracts supplement browser QA: they do not prove focus trapping,
 // generated launcher behavior, computed styles, or gesture/controller correctness.
@@ -22,10 +23,10 @@ const has = (el, attr) => Object.hasOwn(el.attrs, attr);
 const localPath = url => path.resolve(phoneRoot, decodeURIComponent(url.split(/[?#]/)[0]));
 const isLocal = url => !/^(?:[a-z][\w+.-]*:|\/\/|#)/i.test(url);
 
-test("entry loads CDN styles and deferred classic dependencies in order", () => {
+test("entry loads vendored styles and deferred classic dependencies in order", () => {
   const scripts = tags.filter(el => el.tag === "script" && el.attrs.src);
-  const frameworkIndex = scripts.findIndex(el => /^https:\/\/cdn\.jsdelivr\.net\/npm\/framework7@[^/]+\/framework7-bundle\.min\.js$/.test(el.attrs.src));
-  assert.ok(frameworkIndex >= 0, "Framework7 must load from the CDN");
+  const frameworkIndex = scripts.findIndex(el => isLocal(el.attrs.src) && localPath(el.attrs.src) === path.join(phoneRoot, "vendor", "framework7", "framework7-bundle.min.js"));
+  assert.ok(frameworkIndex >= 0, "Framework7 must load from the production bundle");
   let previous = frameworkIndex;
   for (const file of ["ios-boot-core.js", "home-core.js", "app.js"]) {
     const index = scripts.findIndex(el => isLocal(el.attrs.src) && localPath(el.attrs.src) === path.join(phoneRoot, file));
@@ -38,30 +39,48 @@ test("entry loads CDN styles and deferred classic dependencies in order", () => 
     assert.ok(!script.attrs.type || /^(?:text|application)\/javascript$/.test(script.attrs.type), "entry scripts use classic globals");
   }
   const styles = tags.filter(el => el.tag === "link" && el.attrs.rel === "stylesheet");
-  const frameworkStyle = styles.findIndex(el => /^https:\/\/cdn\.jsdelivr\.net\/npm\/framework7@[^/]+\/framework7-bundle\.min\.css$/.test(el.attrs.href));
-  const iconStyle = styles.findIndex(el => /^https:\/\/cdn\.jsdelivr\.net\/npm\/framework7-icons@[^/]+\/css\/framework7-icons\.css$/.test(el.attrs.href));
+  const frameworkStyle = styles.findIndex(el => isLocal(el.attrs.href) && localPath(el.attrs.href) === path.join(phoneRoot, "vendor", "framework7", "framework7-bundle.min.css"));
+  const iconStyle = styles.findIndex(el => isLocal(el.attrs.href) && localPath(el.attrs.href) === path.join(phoneRoot, "vendor", "framework7-icons", "css", "framework7-icons.css"));
   const shellStyle = styles.findIndex(el => isLocal(el.attrs.href) && localPath(el.attrs.href) === path.join(phoneRoot, "main.css"));
   assert.ok(frameworkStyle >= 0 && iconStyle >= 0);
   assert.ok(shellStyle > frameworkStyle && shellStyle > iconStyle, "shell overrides follow vendor styles");
-  assert.equal(scripts[frameworkIndex].attrs.src.match(/framework7@([^/]+)/)[1], styles[frameworkStyle].attrs.href.match(/framework7@([^/]+)/)[1], "framework JS and CSS versions must agree");
+  assert.ok(styles.every(style => has(style, "data-boot-critical")), "every phone stylesheet participates in the boot gate");
+  assert.ok([...scripts, ...styles].every(el => isLocal(el.attrs.src || el.attrs.href)), "production boot cannot depend on a CDN");
 });
 
-test("entry preserves zoom and boots with lock and home inert", () => {
+test("entry preserves zoom and boots with Welcome, notifications, and Home unavailable", () => {
   const viewport = tags.find(el => el.tag === "meta" && el.attrs.name === "viewport");
   assert.match(viewport?.attrs.content || "", /viewport-fit\s*=\s*cover/);
   assert.doesNotMatch(viewport.attrs.content, /maximum-scale|user-scalable/i);
   assert.equal(byId("ios-app")?.attrs["data-screen"], "boot");
   assert.equal(byClass("phone-boot")?.attrs["aria-busy"], "true");
-  const lock = byId("lock-screen"), home = byId("home-screen");
+  const welcome = byId("welcome-screen"), lock = byId("lock-screen"), home = byId("home-screen");
+  assert.ok(welcome?.attrs["aria-label"] && has(welcome, "hidden") && has(welcome, "inert"));
+  assert.ok(byClass("welcome-greeting")?.attrs["aria-live"] === "polite");
   assert.ok(lock?.attrs["aria-label"]);
-  assert.ok(!has(lock, "hidden") && has(lock, "inert"));
+  assert.ok(has(lock, "hidden") && has(lock, "inert"));
   assert.equal(home?.tag, "main");
   assert.ok(home.attrs["aria-label"] && has(home, "inert"));
   assert.ok(tags.some(el => el.attrs["aria-live"] === "polite"), "phase changes have an announcement region");
 });
 
+test("boot hands off to the animated Hello screen instead of the clock screen", () => {
+  assert.match(appSource, /function showWelcome\(\)/);
+  assert.match(appSource, /await waitForBootReady[\s\S]*?showWelcome\(\)/);
+  assert.doesNotMatch(appSource, /await waitForBootReady[\s\S]*?setScreen\("lock"\)/);
+});
+
+test("analog clock has a full 60-mark dial and independent center-pivot hands", () => {
+  assert.match(appSource, /for \(let i = 0; i < 60; i\+\+\)/);
+  assert.match(appSource, /class=\"clock-dial\"/);
+  assert.match(appSource, /class=\"clock-hand clock-hour\"/);
+  assert.match(appSource, /class=\"clock-hand clock-minute\"/);
+  assert.match(appSource, /class=\"clock-hand clock-second\"/);
+  assert.match(css, /\.clock-second::after\s*\{/);
+});
+
 test("launchers expose named native keyboard controls and navigation mounts", () => {
-  for (const name of ["unlock-target", "app-home-target", "search-launcher"]) {
+  for (const name of ["welcome-target", "notification-dismiss-target", "app-home-target", "search-launcher"]) {
     const control = byClass(name);
     assert.equal(control?.tag, "button", name + " must support native Enter and Space activation");
     assert.ok(control.attrs["aria-label"]?.trim(), name + " needs an accessible name");

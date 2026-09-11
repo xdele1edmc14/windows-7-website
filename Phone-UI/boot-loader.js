@@ -7,9 +7,9 @@
   const IMAGES = Object.freeze(['./wallpaper.png', '../assets/Phone-UI/apple_logo.jpg']);
 
   async function prepareAssets({ document, framework, ImageCtor = globalThis.Image, timeoutMs = 20000 }) {
-    if (typeof framework !== 'function') throw new Error('Framework7 could not load. Check your connection.');
-    if ([...document.querySelectorAll('link[rel="stylesheet"]')].some(link => !link.sheet)) {
-      throw new Error('A stylesheet could not load. Check your connection.');
+    if (typeof framework !== 'function') throw new Error('The bundled Framework7 runtime could not load.');
+    if ([...document.querySelectorAll('link[data-boot-critical]')].some(link => !link.sheet)) {
+      throw new Error('A bundled stylesheet could not load.');
     }
     let timeout;
     const images = IMAGES.map(url => new Promise((resolve, reject) => {
@@ -29,7 +29,7 @@
     try {
       await Promise.race([
         Promise.all([...images, fonts]),
-        new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Asset loading timed out. Check your connection.')), timeoutMs); })
+        new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Bundled asset loading timed out.')), timeoutMs); })
       ]);
     } finally { clearTimeout(timeout); }
   }
