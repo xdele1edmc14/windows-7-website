@@ -1,0 +1,160 @@
+#windows-7-root .welcome-window[hidden] { display: none !important; }
+
+#windows-7-root .welcome-window {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  overflow: visible;
+  border: 1px solid rgba(229, 253, 255, .7);
+  border-radius: 7px 7px 5px 5px;
+  background: linear-gradient(rgba(239, 253, 255, .48), rgba(46, 125, 155, .38));
+  box-shadow: 0 15px 35px rgba(0, 42, 67, .42), inset 0 1px rgba(255,255,255,.8);
+  color: #f7ffff;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+#windows-7-root .window.welcome-window[role="dialog"] {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition-property: none;
+}
+
+#windows-7-root .welcome-window > .welcome-window__title-bar {
+  min-height: 29px;
+  padding-left: 8px;
+  text-shadow: 0 1px rgba(255,255,255,.85);
+}
+
+#windows-7-root .welcome-window > .welcome-window__title-bar .title-bar-text {
+  padding-top: 5px;
+  font: 600 12px/16px "Segoe UI", Tahoma, sans-serif;
+}
+
+#windows-7-root .welcome-window > .welcome-window__body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  margin: 0 5px 5px;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(226, 255, 255, .58);
+  border-radius: 2px;
+  background: linear-gradient(120deg, #0f7896, #32c6d8 48%, #176c9d);
+  box-shadow: inset 0 1px rgba(255,255,255,.58), inset 0 -1px rgba(0,59,92,.35);
+}
+
+.welcome-window__surface { position:relative; isolation:isolate; display:flex; min-width:0; min-height:0; flex:1 1 auto; flex-direction:column; overflow:hidden; }
+
+.welcome-window__status {
+  position:relative;
+  z-index:1;
+  display: flex;
+  min-height: 36px;
+  flex: 0 0 36px;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 18px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(235,255,255,.34);
+  background: rgba(2, 79, 108, .3);
+  color: #f4ffff;
+  font: 11px/1.35 "Segoe UI", Tahoma, sans-serif;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px rgba(0,65,89,.75);
+  white-space: nowrap;
+}
+.welcome-window__status::before { content: ""; width: 7px; height: 7px; margin-right: 7px; border: 1px solid rgba(255,255,255,.8); border-radius: 50%; background: #b9ffff; box-shadow: 0 0 6px #cfffff; }
+
+.welcome-window__layout { position:relative; z-index:1; display:grid; min-width:0; min-height:0; flex:1 1 auto; grid-template-columns:236px minmax(0,1fr); overflow:hidden; }
+.welcome-window__sidebar {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 30px 24px 26px;
+  overflow: hidden;
+  border-right: 1px solid rgba(244, 255, 253, .56);
+  background: linear-gradient(180deg, rgba(228, 255, 247, .08), rgba(139, 211, 191, .12));
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  backdrop-filter: blur(18px) saturate(125%);
+  box-shadow: var(--w7-el-sd), inset 0 1px rgba(255,255,255,.64), inset -1px 0 rgba(0,41,49,.36);
+}
+.welcome-window__app-mark { display:grid; width:76px; height:76px; flex:0 0 76px; place-items:center; margin-left:5px; border:1px solid rgba(255,255,255,.64); border-radius:3px; background:linear-gradient(rgba(255,255,255,.25),rgba(10,75,78,.16)); box-shadow:var(--w7-el-sd),inset 0 1px rgba(255,255,255,.54); }
+.welcome-window__app-icon { width:48px; height:48px; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,44,47,.48)); }
+.welcome-window__steps { display:grid; gap:13px; margin:48px 0 0; padding:0; list-style:none; }
+.welcome-step { display:grid; grid-template-columns:27px minmax(0,1fr); gap:9px; align-items:center; min-height:42px; padding:8px 10px; border:1px solid transparent; border-radius:2px; color:rgba(242,255,255,.84); font:13px/18px "Segoe UI", Tahoma, sans-serif; text-shadow:0 1px rgba(0,53,57,.8); }
+.welcome-step__number { display:grid; width:24px; height:24px; place-items:center; border:1px solid rgba(235,255,255,.65); border-radius:50%; background:rgba(0,77,78,.28); font-size:12px; }
+.welcome-step__label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.welcome-step--active { border-color:rgba(255,255,255,.7); background:linear-gradient(90deg,rgba(245,255,255,.45),rgba(175,250,255,.12)); box-shadow:inset 0 1px rgba(255,255,255,.6),0 1px 3px rgba(0,64,90,.3); color:#fff; font-weight:600; }
+.welcome-step--active .welcome-step__number { background:#e5ffff; color:#176b83; text-shadow:none; }
+
+.welcome-window__viewport { position:relative; min-width:0; min-height:0; flex:1 1 auto; overflow:hidden; background:linear-gradient(135deg, rgba(4,55,61,.34), rgba(4,33,45,.12)); }
+.welcome-bubbles { position:absolute; z-index:0; inset:0; overflow:hidden; pointer-events:none; background:radial-gradient(ellipse at 72% 24%, rgba(99, 180, 165, .22), transparent 42%), radial-gradient(ellipse at 18% 82%, rgba(23, 111, 110, .32), transparent 46%), linear-gradient(135deg, #063f59 0%, #155c5b 48%, #073b47 100%); }
+.welcome-bubble { position:absolute; left:var(--bubble-left); bottom:-70px; display:block; width:var(--bubble-size); height:var(--bubble-size); border-radius:50%; animation:welcomeBubbleFloat var(--bubble-duration) var(--bubble-delay) ease-in infinite; }
+.welcome-bubble::before { position:absolute; inset:0; border-radius:inherit; background:hsla(166,55%,69%,.24); box-shadow:inset 1px 1px rgba(255,255,255,.30); content:""; }
+.welcome-bubble--left::before { animation:welcomeBubbleSwayLeft 4.5s ease-in-out alternate infinite; }.welcome-bubble--right::before { animation:welcomeBubbleSwayRight 5.5s ease-in-out alternate infinite; }
+.welcome-screen { position:absolute; z-index:1; inset:0; box-sizing:border-box; padding:38px 46px 34px; overflow:auto; color:#f8ffff; text-shadow:0 1px 1px rgba(0,49,54,.75); }
+.welcome-screen__header { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:16px; margin-bottom:27px; }
+.welcome-screen__heading-row { display:flex; min-width:0; align-items:center; gap:11px; }
+.welcome-screen__header-icon { width:52px; height:52px; flex:0 0 52px; object-fit:contain; filter:drop-shadow(0 2px 2px rgba(0,45,47,.5)); }
+.welcome-screen__counter { padding:4px 9px; border:1px solid rgba(255,255,255,.55); border-radius:2px; background:rgba(0,65,69,.24); color:#efffff; font-size:12px; line-height:18px; white-space:nowrap; }
+.welcome-screen h1 { margin:0; color:#fff; font-size:30px; font-weight:300; line-height:36px; letter-spacing:-.3px; }
+.welcome-screen__lead { margin:0; color:#efffff; font-size:15px; line-height:1.6; }
+.welcome-screen__terminal-copy { min-height:132px; box-sizing:border-box; padding:18px 20px; border:1px solid rgba(255,255,255,.50); border-left:3px solid #d6f7ed; border-radius:2px; background:rgba(0,50,57,.26); box-shadow:inset 0 1px rgba(255,255,255,.24); color:#fff; font:13px/1.6 "Segoe UI", Tahoma, sans-serif; }
+.welcome-screen__lead--compact { margin-bottom:11px; font-size:12px; line-height:1.4; }
+.welcome-interactions { display:grid; gap:12px; margin:0; padding:0; list-style:none; }
+.welcome-interactions li { position:relative; padding:12px 15px 12px 30px; border:1px solid rgba(255,255,255,.48); border-radius:2px; background:rgba(0,53,57,.20); font-size:13px; line-height:1.45; }
+.welcome-interactions li::before { content:"›"; position:absolute; top:5px; left:9px; color:#dfffff; font-size:19px; }
+.welcome-interactions strong { color:#fff; font-weight:600; }
+.welcome-shortcuts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+#windows-7-root .welcome-shortcut { display:flex; min-width:0; min-height:112px; flex-direction:column; align-items:flex-start; padding:16px 17px; overflow:hidden; border:1px solid rgba(255,255,255,.66); border-radius:2px; background:linear-gradient(rgba(240,255,252,.24),rgba(16,104,101,.20)); box-shadow:inset 0 1px rgba(255,255,255,.6); color:#fff; font-family:"Segoe UI",Tahoma,sans-serif; text-align:left; text-shadow:0 1px rgba(0,54,55,.8); }
+#windows-7-root .welcome-shortcut:hover,#windows-7-root .welcome-shortcut:focus-visible { border-color:rgba(222,246,236,.82); outline:0; background:linear-gradient(rgba(166, 222, 205, .38),rgba(46,133,127,.28)); box-shadow:inset 0 1px rgba(255,255,255,.52),0 0 0 2px rgba(128,205,188,.26); }
+#windows-7-root .welcome-shortcut:active { background:rgba(27,103,101,.46); box-shadow:inset 0 2px 5px rgba(0,51,54,.45); }
+.welcome-shortcut strong { color:#fff; font-size:13px; font-weight:600; line-height:1.25; }
+.welcome-shortcut span { margin-top:5px; color:#edffff; font-size:11px; line-height:1.35; }
+
+#windows-7-root .welcome-window .welcome-window__footer { position:relative; z-index:1; display:flex; min-height:68px; flex:0 0 68px; align-items:center; justify-content:space-between; gap:16px; margin:0; padding:13px 22px; border:0; border-top:1px solid rgba(255,255,255,.42); background:rgba(0,55,60,.22); box-shadow:inset 0 1px rgba(255,255,255,.18); }
+.welcome-window__startup { display:inline-flex; align-items:center; gap:6px; color:#efffff; font-size:11px; text-shadow:0 1px rgba(0,59,82,.72); white-space:nowrap; }
+#windows-7-root .welcome-window__startup input { position:absolute; width:1px; height:1px; opacity:0; }
+#windows-7-root .welcome-window__startup input + label { color:#efffff; cursor:pointer; }
+#windows-7-root .welcome-window__startup input + label::before { display:inline-block; width:13px; height:13px; margin-right:6px; vertical-align:-3px; border:1px solid rgba(221,246,237,.78); border-radius:2px; background:linear-gradient(rgba(119,180,166,.58),rgba(22,99,96,.68)); box-shadow:inset 0 1px rgba(255,255,255,.28),inset 0 -1px rgba(0,51,54,.34),0 1px rgba(255,255,255,.2); content:""; }
+#windows-7-root .welcome-window__startup input + label:hover::before { border-color:rgba(231,250,242,.92); background:linear-gradient(#b9dfd3,#5caa9b); }
+#windows-7-root .welcome-window__startup input:checked + label::before { background:linear-gradient(#bfdfd3,#67aa9c); }
+#windows-7-root .welcome-window__startup input:checked + label::after { position:absolute; margin-left:-35px; color:#083f43; font:700 12px/14px "Segoe UI",Tahoma,sans-serif; content:"✓"; }
+#windows-7-root .welcome-window__startup input:focus-visible + label { outline:1px dotted #d9f4e9; outline-offset:2px; }
+.welcome-window__actions { display:flex; min-width:0; align-items:center; justify-content:flex-end; gap:7px; }
+#windows-7-root .welcome-window__actions button {
+  --w7-el-grad: linear-gradient(#b2dcd0 0 45%, #77b9a9 50%, #4d938b);
+  --w7-el-grad-h: linear-gradient(#c8eadf 0 45%, #8fcbb9 50%, #5fa89d);
+  --w7-el-grad-a: linear-gradient(#75b5a8, #a0d8ca 48%, #5f9d94);
+  --w7-el-sd: inset 0 1px rgba(255,255,255,.5), inset 0 -1px rgba(0,58,57,.2);
+  --w7-el-sd-a: inset 0 1px rgba(255,255,255,.28), inset 0 2px 4px rgba(0,58,57,.3);
+  min-width:78px;
+  min-height:28px;
+  padding:0 13px;
+  border:1px solid #347a79;
+  border-radius:2px;
+  background:var(--w7-el-grad);
+  box-shadow:var(--w7-el-sd),0 1px rgba(0,56,60,.34);
+  color:#073f44;
+  font:12px/24px "Segoe UI",Tahoma,sans-serif;
+  text-shadow:0 1px rgba(255,255,255,.48);
+}
+#windows-7-root .welcome-window__actions button.default { animation:none !important; }
+#windows-7-root .welcome-window__actions button::before,#windows-7-root .welcome-window__actions button::after { content:none; }
+#windows-7-root .welcome-window__actions button[data-welcome-action="skip"] { min-width:106px; }
+#windows-7-root .welcome-window__actions button:not(:disabled):hover,#windows-7-root .welcome-window__actions button:not(:disabled):focus-visible { border-color:#d2eee3; outline:0; background:var(--w7-el-grad-h); box-shadow:var(--w7-el-sd),0 0 0 2px rgba(122,201,183,.28); }
+#windows-7-root .welcome-window__actions button:not(:disabled):active { background:var(--w7-el-grad-a); box-shadow:var(--w7-el-sd-a); }
+#windows-7-root .welcome-window__actions button:disabled { border-color:rgba(146,194,183,.5); background:rgba(89,150,142,.42); box-shadow:none; color:rgba(16,66,68,.7); text-shadow:none; }
+
+.slide-in-right { animation:welcomeSlideInRight 180ms ease-out both; }.slide-in-left { animation:welcomeSlideInLeft 180ms ease-out both; }.slide-out-left { pointer-events:none; animation:welcomeSlideOutLeft 180ms ease-in both; }.slide-out-right { pointer-events:none; animation:welcomeSlideOutRight 180ms ease-in both; }
+@keyframes welcomeBubbleFloat { to { transform:translateY(-420px); } } @keyframes welcomeBubbleSwayLeft { from { transform:translateX(-100%); } to { transform:translateX(100%); } } @keyframes welcomeBubbleSwayRight { from { transform:translateX(100%); } to { transform:translateX(-100%); } }
+@keyframes welcomeSlideInRight { from { opacity:0; transform:translateX(10px); } to { opacity:1; transform:translateX(0); } } @keyframes welcomeSlideInLeft { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } } @keyframes welcomeSlideOutLeft { to { opacity:0; transform:translateX(-10px); } } @keyframes welcomeSlideOutRight { to { opacity:0; transform:translateX(10px); } }
+
+@media (max-width:640px),(max-height:420px) { .welcome-window__layout { grid-template-columns:150px minmax(0,1fr); }.welcome-window__sidebar { padding:16px 11px; }.welcome-screen { padding:18px 20px 14px; }.welcome-screen h1 { font-size:22px; }.welcome-shortcuts { grid-template-columns:1fr; gap:8px; } #windows-7-root .welcome-shortcut { min-height:82px; padding:11px 13px; } #windows-7-root .welcome-window .welcome-window__footer { min-height:50px; flex-basis:50px; padding:7px 10px; } #windows-7-root .welcome-window__actions button { min-width:62px; padding:0 8px; font-size:11px; } #windows-7-root .welcome-window__actions button[data-welcome-action="skip"] { min-width:96px; } }
+@media (prefers-reduced-motion:reduce) { .welcome-bubble,.welcome-bubble::before,.slide-in-right,.slide-in-left,.slide-out-left,.slide-out-right { animation:none !important; } }
+@media (forced-colors:active) { #windows-7-root .welcome-window,#windows-7-root .welcome-window > .welcome-window__body,.welcome-window__sidebar,#windows-7-root .welcome-window .welcome-window__footer,#windows-7-root .welcome-shortcut { border-color:CanvasText; background:Canvas; box-shadow:none; color:CanvasText; } .welcome-bubbles { display:none; } #windows-7-root .welcome-shortcut:focus-visible,#windows-7-root .welcome-window__actions button:focus-visible { outline:2px solid Highlight; outline-offset:2px; } }

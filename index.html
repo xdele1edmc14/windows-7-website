@@ -2,16 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Windows 7</title>
   <link rel="stylesheet" href="./vendor/7.css">
-  <link rel="stylesheet" href="./desktop.css?v=20260810-1">
+  <link rel="stylesheet" href="./desktop.css?v=20260815-1">
   <link rel="stylesheet" href="./control-panel.css?v=20260808-2">
   <link rel="stylesheet" href="./themes.css?v=20260808-1">
   <link rel="stylesheet" href="./paint.css">
   <link rel="stylesheet" href="./photo-viewer.css">
   <link rel="stylesheet" href="./notepad.css">
-  <script src="./boot-assets.js?v=20260810-1" defer></script>
+  <link rel="stylesheet" href="./youtube.css?v=20260812-2">
+  <link rel="stylesheet" href="./devhub.css?v=20260816-4">
+  <link rel="stylesheet" href="./welcome.css?v=20260814-7">
+  <link rel="stylesheet" href="./media-center.css?v=20260820-1">
+  <link rel="stylesheet" href="./responsive-shell.css">
+  <script src="./responsive-shell.js" defer></script>
+  <script src="./boot-assets.js?v=20260816-1" defer></script>
   <script src="./chrome.js" defer></script>
   <script src="./paint.js" defer></script>
   <script src="./photo-viewer.js" defer></script>
@@ -20,7 +26,12 @@
   <script src="./control-panel.js?v=20260808-1" defer></script>
   <script src="./profile-store.js?v=20260808-2" defer></script>
   <script src="./aero-window-motion.js?v=20260809-1" defer></script>
-  <script src="./index.js?v=20260810-1" defer></script>
+  <script src="./youtube.js?v=20260812-2" defer></script>
+  <script src="./devhub.js?v=20260816-2" defer></script>
+  <script src="./welcome.js?v=20260814-7" defer></script>
+  <script src="./media-center-data.js?v=20260820-1" defer></script>
+  <script src="./media-center.js?v=20260820-3" defer></script>
+  <script src="./index.js?v=20260819-1" defer></script>
 </head>
 <body style="margin: 0; overflow: hidden; background: #000;">
   <div id="windows-7-root">
@@ -635,6 +646,24 @@
                 </button>
               </li>
               <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="youtube">
+                  <img alt="" draggable="false">
+                  <span>YouTube</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="devhub">
+                  <img alt="" draggable="false">
+                  <span>DevHub</span>
+                </button>
+              </li>
+              <li role="menuitem">
+                <button type="button" class="start-menu__item" data-start-icon="media-center">
+                  <img alt="" draggable="false">
+                  <span>Media Center</span>
+                </button>
+              </li>
+              <li role="menuitem">
                 <button type="button" class="start-menu__item" data-start-icon="cmd">
                   <img alt="" draggable="false">
                   <span>Command Prompt</span>
@@ -715,6 +744,7 @@
       </nav>
     </section>
   </div>
-  <noscript>This Windows 7 recreation requires JavaScript.</noscript>
+  <iframe id="iphone-portfolio" title="iPhone portfolio" hidden></iframe>
+  <noscript>This portfolio requires JavaScript.</noscript>
 </body>
 </html>

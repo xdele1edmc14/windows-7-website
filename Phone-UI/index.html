@@ -1,72 +1,99 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    >
-    <meta name="theme-color" content="#000000">
-    <title>iOS Setup</title>
-
-    <link rel="preload" as="image" href="../assets/Phone-UI/apple_logo.jpg">
-    <link rel="preload" as="image" href="../assets/Phone-UI/ios-wallpaper.svg">
-    <link rel="stylesheet" href="../node_modules/framework7/framework7-bundle.min.css">
-    <link rel="stylesheet" href="../node_modules/framework7-icons/css/framework7-icons.css">
-    <link rel="stylesheet" href="./main.css">
-
-    <script src="../node_modules/framework7/framework7-bundle.min.js" defer></script>
-    <script src="./ios-boot-core.js?v=20260809-3" defer></script>
-    <script src="./app.js?v=20260809-3" defer></script>
-  </head>
-  <body data-phase="boot">
-    <div class="device-stage">
-      <div class="iphone-frame">
-        <div class="dynamic-island" aria-hidden="true"></div>
-
-        <div id="ios-app" class="ios-app framework7-root" data-phase="boot">
-          <main class="app-host" aria-label="iOS setup">
-            <section class="desktop-screen safe-area-layer" data-desktop-screen aria-hidden="true">
-              <img
-                class="desktop-wallpaper"
-                src="../assets/Phone-UI/ios-wallpaper.svg"
-                alt=""
-                draggable="false"
-              >
-              <article class="card glass-surface development-card" data-development-card tabindex="-1">
-                <div class="card-content card-content-padding">
-                  <p class="development-card__eyebrow">iOS</p>
-                  <h1>Under Development</h1>
-                  <p>System components and application environments are currently being compiled.</p>
-                </div>
-              </article>
-            </section>
-
-            <section
-              class="welcome-screen safe-area-layer"
-              data-welcome-screen
-              role="button"
-              aria-label="Welcome to iPhone"
-              aria-describedby="swipe-instruction"
-              aria-hidden="true"
-              tabindex="0"
-            >
-              <div class="greeting-stage">
-                <p class="greeting" data-greeting>Hello</p>
-              </div>
-
-              <footer class="unlock-affordance">
-                <p id="swipe-instruction" class="swipe-prompt" data-swipe-prompt>Swipe up to open</p>
-                <div class="home-indicator" data-home-indicator aria-hidden="true"></div>
-              </footer>
-            </section>
-
-            <section class="boot-screen safe-area-layer" data-boot-screen aria-label="Apple"><img src="../assets/Phone-UI/apple_logo.jpg" alt="Apple" draggable="false"></section>
-          </main>
-
-          <p class="visually-hidden" data-phase-announcement aria-live="polite">Starting iOS</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17132d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>iPhone</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" as="image" href="./wallpaper.png">
+  <link rel="preload" as="image" href="../assets/Phone-UI/apple_logo.jpg">
+  <!-- Critical boot styling paints even while CDN styles/scripts are downloading. -->
+  <style>
+    html, body { margin: 0; background: #000; }
+    .phone-boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #000; color: #fff; }
+    .phone-boot > img { width: 164px; max-width: 45%; }
+    .phone-boot [hidden] { display: none !important; }
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/framework7@9.1.2/framework7-bundle.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/framework7-icons@5.0.5/css/framework7-icons.css">
+  <link rel="stylesheet" href="./main.css">
+  <script src="https://cdn.jsdelivr.net/npm/framework7@9.1.2/framework7-bundle.min.js" defer></script>
+  <script src="./ios-boot-core.js" defer></script>
+  <script src="./boot-loader.js" defer></script>
+  <script src="./home-core.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="device-stage">
+    <div class="iphone-frame">
+      <div id="ios-app" class="ios-app" data-screen="boot">
+        <section class="phone-boot" aria-label="Starting iPhone" aria-busy="true">
+          <img src="../assets/Phone-UI/apple_logo.jpg" alt="Apple" draggable="false">
+          <div class="boot-error" role="alert" hidden><p>Unable to start iPhone.</p><button type="button" class="boot-retry">Try again</button></div>
+        </section>
+        <div class="wallpaper" aria-hidden="true"></div>
+        <main id="home-screen" class="home-screen" aria-label="Home Screen" inert>
+          <div class="home-depth">
+            <div class="page-viewport"><div class="page-track" id="page-track"></div></div>
+            <div class="home-navigation">
+              <nav class="page-dots" aria-label="Home Screen pages"></nav>
+              <button class="search-launcher glass" aria-label="Open Spotlight"><i class="f7-icons" aria-hidden="true">search</i> Search</button>
+            </div>
+            <nav class="dock glass" aria-label="Dock"></nav>
+          </div>
+          <button class="done-button glass" hidden>Done</button>
+        </main>
+        <section id="lock-screen" class="lock-screen" aria-label="Lock Screen" inert>
+          <div class="wallpaper lock-wallpaper" aria-hidden="true"></div>
+          <p class="lock-date"></p>
+          <div class="lock-clock" role="img" aria-label="Current time"></div>
+          <div class="wallpaper lock-foreground" aria-hidden="true"></div>
+          <div class="lock-actions">
+            <!-- Framework7 has no flashlight glyph; this small outline matches the reference control. -->
+            <button class="lock-shortcut glass" aria-label="Flashlight" aria-pressed="false"><svg class="flashlight-symbol" viewBox="0 0 20 36" aria-hidden="true"><path fill="currentColor" d="M3 1h14a1 1 0 0 1 1 1v3H2V2a1 1 0 0 1 1-1ZM2 7h16l-2 6-2 3v17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V16l-2-3Z"/><rect x="8" y="18" width="4" height="9" rx="2" fill="#3d3765"/><circle cx="10" cy="21" r="1.4" fill="currentColor"/></svg></button>
+            <span class="notifications"><span></span> 2 Notifications</span>
+            <button class="lock-shortcut glass" aria-label="Open Camera"><i class="f7-icons" aria-hidden="true">camera_fill</i></button>
+          </div>
+          <button class="unlock-target" aria-label="Unlock iPhone. Swipe up or press Enter."><span class="home-indicator"></span></button>
+        </section>
+        <section class="app-surface" id="app-surface" role="dialog" aria-modal="true" aria-labelledby="app-title" hidden inert>
+          <div class="app-content"><span class="app-initial" aria-hidden="true"></span><h1 id="app-title"></h1></div>
+          <button class="app-home-target" aria-label="Return to Home Screen. Swipe up or press Enter."><span class="home-indicator"></span></button>
+        </section>
+        <section class="spotlight" role="dialog" aria-modal="true" aria-label="Spotlight" hidden inert>
+          <div class="spotlight-content">
+            <form class="spotlight-form" role="search">
+              <label class="spotlight-field glass"><i class="f7-icons" aria-hidden="true">search</i><input type="search" placeholder="Search" aria-label="Search" autocomplete="off" spellcheck="false"></label>
+              <button type="button" class="spotlight-cancel">Cancel</button>
+            </form>
+            <div class="suggestion-heading">Siri Suggestions</div>
+            <div class="suggestions glass"></div>
+          </div>
+        </section>
+        <div class="remove-backdrop" hidden>
+          <section class="remove-sheet" role="dialog" aria-modal="true" aria-labelledby="remove-title" tabindex="-1">
+            <div class="remove-options glass"><div class="remove-heading"><h2 id="remove-title">Remove App</h2><p>Remove this app from your Home Screen?</p></div><button data-remove="hide">Remove App</button><button data-remove="delete">Delete App</button></div>
+            <button class="remove-cancel glass">Cancel</button>
+          </section>
         </div>
+        <header class="status-bar" aria-label="Status bar"><span class="status-time"></span><div class="status-right"><span class="signal" role="img" aria-label="Cellular signal: two bars"><b></b><b></b><b></b><b></b></span><i class="f7-icons" aria-label="Wi-Fi">wifi</i><span class="battery" aria-label="Battery 73 percent, low power mode"><span>73</span></span></div></header>
+        <div class="dynamic-island" aria-hidden="true"></div>
+        <p class="visually-hidden" id="announcement" aria-live="polite"></p>
       </div>
     </div>
-  </body>
+  </div>
+  <script>
+    // Runs before deferred CDN scripts: even a stalled script request gets a
+    // retry path. The normal asset gate clears this watchdog on success/failure.
+    document.querySelector('.boot-retry').addEventListener('click', () => location.reload());
+    window.iosBootWatchdog = setTimeout(() => {
+      if (document.querySelector('#ios-app').dataset.screen !== 'boot') return;
+      document.querySelector('.phone-boot').setAttribute('aria-busy', 'false');
+      document.querySelector('.boot-error p').textContent = 'Loading took too long. Check your connection and try again.';
+      document.querySelector('.boot-error').hidden = false;
+    }, 25000);
+  </script>
+</body>
 </html>

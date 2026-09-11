@@ -9,23 +9,28 @@ const read = (fileName) => fs.readFileSync(path.join(projectRoot, fileName), "ut
 test("the Start menu loads the current theme-aware shell assets", () => {
   const html = read("index.html");
 
-  assert.match(html, /\.\/desktop\.css\?v=20260810-1/);
+  assert.match(html, /\.\/desktop\.css\?v=20260815-1/);
   assert.match(html, /\.\/themes\.js\?v=20260810-1/);
 });
 
-test("Aero Start menu surfaces consume theme variables while the apps pane stays white", () => {
+test("the stock Windows 7 Start menu retains its original slate gradient", () => {
   const css = read("desktop.css");
 
   assert.match(
     css,
-    /\[data-theme="windows-7"\] \.start-menu,[\s\S]*?linear-gradient\(var\(--theme-shell-light\), var\(--theme-shell-mid\) 52%, var\(--theme-shell-dark\)\) !important;/
+    /\.start-menu \{[\s\S]*?linear-gradient\(#64879a 0, #496b7c 48%, #31576c 100%\);/
   );
+});
+
+test("alternate Start menus alone use a translucent Aero gradient that darkens at 65%", () => {
+  const css = read("desktop.css");
+
   assert.match(
     css,
-    /\) \.start-menu__system \{[\s\S]*?rgba\(var\(--theme-accent-rgb\),\.38\)[\s\S]*?var\(--theme-shell-light\), var\(--theme-shell-dark\)/
+    /#windows-7-root\[data-theme="architecture"\] \.start-menu,\s*#windows-7-root\[data-theme="landscape"\] \.start-menu,\s*#windows-7-root\[data-theme="nature"\] \.start-menu \{[\s\S]*?rgba\(var\(--theme-accent-rgb\), 0\.65\) 65%[\s\S]*?backdrop-filter: blur\(12px\) saturate\(120%\) !important;/
   );
-  assert.match(
+  assert.doesNotMatch(
     css,
-    /\[data-theme="nature"\] \.start-menu__apps \{\s*background: #fff !important;/
+    /#windows-7-root\[data-theme="windows-7"\] \.start-menu,[\s\S]*?rgba\(var\(--theme-accent-rgb\), 0\.65\) 65%/
   );
 });

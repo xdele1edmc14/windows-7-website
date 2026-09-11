@@ -1,0 +1,1053 @@
+.devhub-window {
+  --devhub-canvas: #0d1117;
+  --devhub-surface: #161b22;
+  --devhub-surface-hover: #1c2128;
+  --devhub-border: #30363d;
+  --devhub-text: #e6edf3;
+  --devhub-muted: #8d96a0;
+  --devhub-link: #58a6ff;
+  --devhub-link-hover: #79c0ff;
+  --devhub-success: #238636;
+  --devhub-heat-0: #161b22;
+  --devhub-heat-1: #0e4429;
+  --devhub-heat-2: #006d32;
+  --devhub-heat-3: #26a641;
+  --devhub-heat-4: #39d353;
+  color: var(--devhub-text);
+}
+
+.devhub-window[hidden] {
+  display: none !important;
+}
+
+/* 7.css expects :target dialogs. The desktop window manager owns visibility. */
+#windows-7-root .window.devhub-window[role="dialog"] {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition-property: none;
+}
+
+.devhub-window__title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.devhub-window__title img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+#windows-7-root .devhub-window > .devhub-window__body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-color: #20262e;
+  background: var(--devhub-canvas);
+  color: var(--devhub-text);
+}
+
+.devhub-app,
+.devhub-app *,
+.devhub-app *::before,
+.devhub-app *::after {
+  box-sizing: border-box;
+}
+
+.devhub-app {
+  container: devhub / inline-size;
+  color-scheme: dark;
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) 24px;
+  overflow: hidden;
+  background: var(--devhub-canvas);
+  color: var(--devhub-text);
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.devhub-app h1,
+.devhub-app h2,
+.devhub-app h3,
+.devhub-app p,
+.devhub-app ul {
+  margin: 0;
+}
+
+.devhub-app ul {
+  padding: 0;
+  list-style: none;
+}
+
+.devhub-app button,
+.devhub-app input,
+.devhub-app select {
+  margin: 0;
+  border-radius: 0;
+  font: inherit;
+}
+
+#windows-7-root .devhub-app button {
+  --w7-el-grad: transparent;
+  --w7-el-grad-h: transparent;
+  --w7-el-grad-a: transparent;
+  --w7-el-sd: none;
+  --w7-el-sd-a: none;
+  min-width: 0;
+  min-height: 0;
+  box-shadow: none;
+  color: inherit;
+  text-align: inherit;
+}
+
+#windows-7-root .devhub-app button::before,
+#windows-7-root .devhub-app button::after {
+  content: none;
+}
+
+.devhub-app a {
+  color: var(--devhub-link);
+}
+
+.devhub-app a:hover {
+  color: var(--devhub-link-hover);
+}
+
+.devhub-app button:focus-visible,
+.devhub-app input:focus-visible,
+.devhub-app select:focus-visible,
+.devhub-app a:focus-visible,
+.devhub-repo-card:focus-visible {
+  outline: 2px solid var(--devhub-link);
+  outline-offset: 2px;
+}
+
+.devhub-header {
+  z-index: 5;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: max-content minmax(210px, 390px) minmax(300px, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 54px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--devhub-border);
+  background: #010409;
+}
+
+.devhub-brand,
+.devhub-tabs,
+.devhub-tab,
+.devhub-search,
+.devhub-repo-card__heading,
+.devhub-repo-card__meta,
+.devhub-section-heading,
+.devhub-contribution-legend,
+.devhub-activity__month,
+.devhub-skill-group li,
+.devhub-statusbar {
+  display: flex;
+  align-items: center;
+}
+
+.devhub-brand {
+  gap: 7px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.devhub-brand__logo {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  object-fit: contain;
+}
+
+.devhub-search {
+  height: 30px;
+  min-width: 0;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 6px;
+  background: var(--devhub-canvas);
+  color: var(--devhub-muted);
+}
+
+.devhub-search:focus-within {
+  border-color: var(--devhub-link);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, .18);
+}
+
+.devhub-search__icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
+#windows-7-root .devhub-search input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--devhub-text);
+}
+
+.devhub-search input::placeholder {
+  color: var(--devhub-muted);
+  opacity: 1;
+}
+
+.devhub-tabs {
+  height: 45px;
+  align-self: end;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+#windows-7-root .devhub-tab {
+  position: relative;
+  display: flex;
+  height: 45px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 0;
+  background: transparent;
+  color: var(--devhub-muted);
+  cursor: pointer;
+}
+
+#windows-7-root .devhub-tab:hover {
+  background: rgba(177, 186, 196, .08);
+  color: var(--devhub-text);
+}
+
+.devhub-tab--active {
+  color: var(--devhub-text) !important;
+  font-weight: 600;
+}
+
+.devhub-tab--active::after {
+  position: absolute;
+  right: 8px;
+  bottom: -1px;
+  left: 8px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--devhub-link);
+  content: "" !important;
+}
+
+.devhub-tab__icon {
+  font-size: 13px;
+}
+
+.devhub-layout {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(225px, 30%) minmax(0, 70%);
+  overflow: hidden;
+}
+
+.devhub-profile,
+.devhub-main {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--devhub-border) var(--devhub-canvas);
+  scrollbar-width: thin;
+}
+
+.devhub-profile {
+  padding: 22px 20px 28px;
+  border-right: 1px solid var(--devhub-border);
+}
+
+.devhub-avatar {
+  position: relative;
+  width: min(184px, 82%);
+  aspect-ratio: 1;
+  margin: 0 auto 14px;
+}
+
+.devhub-avatar__image,
+.devhub-avatar__fallback {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #f0f6fc;
+  border-radius: 50%;
+  background: #090d12;
+  box-shadow: 0 0 0 1px var(--devhub-border);
+}
+
+.devhub-avatar__image {
+  display: block;
+  object-fit: cover;
+}
+
+.devhub-avatar__fallback {
+  display: grid;
+  place-items: center;
+  color: #bc8cff;
+  font-size: 44px;
+  font-weight: 700;
+}
+
+.devhub-avatar__fallback[hidden],
+.devhub-avatar__image[hidden] {
+  display: none;
+}
+
+.devhub-avatar__status {
+  position: absolute;
+  right: 2%;
+  bottom: 9%;
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--devhub-canvas);
+  border-radius: 50%;
+  background: var(--devhub-heat-4);
+}
+
+.devhub-profile__identity h1 {
+  color: var(--devhub-text);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.devhub-profile__handle {
+  color: var(--devhub-muted);
+  font-size: 14px;
+}
+
+.devhub-profile__bio {
+  margin-top: 14px !important;
+  color: var(--devhub-text);
+  line-height: 1.55;
+}
+
+#windows-7-root .devhub-edit-profile {
+  width: 100%;
+  margin-top: 14px;
+  padding: 5px 12px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 6px;
+  background: #21262d;
+  color: var(--devhub-muted);
+  text-align: center;
+  cursor: not-allowed;
+}
+
+.devhub-profile__social {
+  margin-top: 12px !important;
+  color: var(--devhub-muted);
+}
+
+.devhub-profile__metadata {
+  display: grid;
+  gap: 7px;
+  margin-top: 15px !important;
+}
+
+.devhub-profile__metadata li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.devhub-profile__meta-icon {
+  width: 14px;
+  flex: 0 0 14px;
+  color: var(--devhub-muted);
+  text-align: center;
+}
+
+.devhub-link {
+  min-width: 0;
+  color: var(--devhub-link);
+  text-decoration: none;
+}
+
+.devhub-link:hover {
+  color: var(--devhub-link-hover);
+  text-decoration: underline;
+}
+
+.devhub-profile__skills {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid var(--devhub-border);
+}
+
+.devhub-profile__skills h2,
+.devhub-panel h2 {
+  color: var(--devhub-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.devhub-skill-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.devhub-skill-pill {
+  padding: 3px 7px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 999px;
+  background: var(--devhub-surface);
+  color: var(--devhub-text);
+  font-size: 11px;
+  transition: 140ms ease;
+  transition-property: background-color, border-color;
+}
+
+.devhub-skill-pill:hover {
+  border-color: #484f58;
+  background: #252b33;
+}
+
+.devhub-main {
+  padding: 22px 24px 30px;
+}
+
+.devhub-panel[hidden] {
+  display: none;
+}
+
+.devhub-app .devhub-panel {
+  background: var(--devhub-canvas);
+  color: var(--devhub-text);
+}
+
+.devhub-section-heading {
+  min-height: 24px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.devhub-section-heading__note {
+  color: var(--devhub-muted);
+  font-size: 11px;
+}
+
+.devhub-repo-grid,
+.devhub-repo-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.devhub-repo-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 122px;
+  flex-direction: column;
+  padding: 13px 14px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 6px;
+  background: var(--devhub-canvas);
+  cursor: pointer;
+  transition: 140ms ease;
+  transition-property: border-color, background-color, transform;
+}
+
+.devhub-repo-card:hover {
+  border-color: #484f58;
+  background: var(--devhub-surface-hover);
+}
+
+.devhub-repo-card:active {
+  transform: translateY(1px);
+}
+
+.devhub-repo-card__heading {
+  min-width: 0;
+  gap: 8px;
+}
+
+.devhub-repo-card__heading h3 {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--devhub-link);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devhub-repo-card:hover h3 {
+  color: var(--devhub-link-hover);
+  text-decoration: underline;
+}
+
+.devhub-repo-card__icon {
+  color: var(--devhub-muted);
+  font-size: 12px;
+}
+
+.devhub-repo-card__badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 999px;
+  color: var(--devhub-muted);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.devhub-repo-card__external {
+  flex: 0 0 auto;
+  color: var(--devhub-muted);
+  font-size: 13px;
+}
+
+.devhub-repo-card__description {
+  display: -webkit-box;
+  margin-top: 10px !important;
+  overflow: hidden;
+  color: var(--devhub-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.devhub-repo-card__meta {
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 10px;
+  color: var(--devhub-muted);
+  font-size: 10px;
+}
+
+.devhub-language {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: #8b949e;
+}
+
+.devhub-language--java { background: #b07219; }
+.devhub-language--javascript { background: #f1e05a; }
+.devhub-language--typescript { background: #3178c6; }
+.devhub-language--gdscript { background: #355570; }
+.devhub-language--python { background: #3572a5; }
+.devhub-language--shell { background: #89e051; }
+
+.devhub-repo-card__stars {
+  margin-left: 8px;
+}
+
+.devhub-contributions,
+.devhub-activity {
+  margin-top: 26px;
+}
+
+.devhub-contributions > h2,
+.devhub-activity > h2 {
+  margin-bottom: 10px !important;
+}
+
+.devhub-contribution-graph {
+  min-width: 0;
+  overflow-x: auto;
+  padding: 12px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 6px;
+  scrollbar-color: var(--devhub-border) var(--devhub-canvas);
+  scrollbar-width: thin;
+}
+
+.devhub-contribution-months {
+  display: grid;
+  min-width: 688px;
+  grid-template-columns: repeat(13, 1fr);
+  margin: 0 0 5px 31px;
+  color: var(--devhub-muted);
+  font-size: 9px;
+}
+
+.devhub-contribution-days {
+  float: left;
+  display: grid;
+  width: 25px;
+  grid-template-rows: repeat(7, 10px);
+  gap: 3px;
+  color: var(--devhub-muted);
+  font-size: 8px;
+  line-height: 10px;
+}
+
+.devhub-contribution-cells {
+  display: grid;
+  width: max-content;
+  grid-auto-flow: column;
+  grid-auto-columns: 10px;
+  grid-template-rows: repeat(7, 10px);
+  gap: 3px;
+}
+
+#windows-7-root .devhub-contribution-cell {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: var(--devhub-heat-0);
+}
+
+#windows-7-root button.devhub-contribution-cell {
+  cursor: crosshair;
+}
+
+#windows-7-root button.devhub-contribution-cell:hover,
+#windows-7-root button.devhub-contribution-cell:focus-visible {
+  border-color: #f0f6fc;
+  outline: 0;
+}
+
+#windows-7-root .devhub-contribution-cell--0 { border-color: var(--devhub-border); background: var(--devhub-heat-0); }
+#windows-7-root .devhub-contribution-cell--1 { background: var(--devhub-heat-1); }
+#windows-7-root .devhub-contribution-cell--2 { background: var(--devhub-heat-2); }
+#windows-7-root .devhub-contribution-cell--3 { background: var(--devhub-heat-3); }
+#windows-7-root .devhub-contribution-cell--4 { background: var(--devhub-heat-4); }
+
+.devhub-contribution-legend {
+  width: max-content;
+  gap: 3px;
+  margin: 9px 0 0 auto;
+  color: var(--devhub-muted);
+  font-size: 9px;
+}
+
+.devhub-contribution-legend > span:first-child {
+  margin-right: 3px;
+}
+
+.devhub-contribution-legend > span:last-child {
+  margin-left: 3px;
+}
+
+.devhub-activity__month {
+  gap: 9px;
+  color: var(--devhub-link);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.devhub-activity__month > span:last-child {
+  height: 1px;
+  flex: 1;
+  background: var(--devhub-border);
+}
+
+.devhub-activity__timeline {
+  position: relative;
+  margin: 11px 0 0 10px;
+  padding-left: 24px;
+}
+
+.devhub-activity__timeline::before {
+  position: absolute;
+  top: 8px;
+  bottom: 12px;
+  left: 5px;
+  width: 1px;
+  background: var(--devhub-border);
+  content: "";
+}
+
+.devhub-activity-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  padding: 8px 0 15px;
+}
+
+.devhub-activity-item__icon {
+  z-index: 1;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  margin-left: -28px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 50%;
+  background: var(--devhub-surface);
+  color: var(--devhub-muted);
+  font-size: 8px;
+}
+
+.devhub-activity-item__content {
+  margin-left: -18px;
+}
+
+.devhub-activity-item h3 {
+  color: var(--devhub-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.devhub-activity-item ul {
+  display: grid;
+  gap: 3px;
+  margin-top: 5px !important;
+}
+
+.devhub-activity-item li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 12px;
+  color: var(--devhub-muted);
+  font-size: 10px;
+}
+
+.devhub-repository-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.devhub-repository-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--devhub-muted);
+}
+
+#windows-7-root .devhub-window .devhub-repository-toolbar select[data-devhub-language]:not([multiple]):not([size]) {
+  height: 28px;
+  padding: 3px 28px 3px 8px !important;
+  border: 1px solid var(--devhub-border) !important;
+  border-radius: 6px !important;
+  background-color: #21262d !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--devhub-muted) 50%),
+    linear-gradient(135deg, var(--devhub-muted) 50%, transparent 50%),
+    linear-gradient(#30363d, #21262d) !important;
+  background-position:
+    calc(100% - 11px) calc(50% + 1px),
+    calc(100% - 7px) calc(50% + 1px),
+    right top !important;
+  background-repeat: no-repeat !important;
+  background-size: 5px 5px, 5px 5px, 21px 100% !important;
+  box-shadow: none !important;
+  color: var(--devhub-text);
+}
+
+#windows-7-root .devhub-repository-toolbar select option {
+  background: #21262d;
+  color: var(--devhub-text);
+}
+
+.devhub-empty {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  border: 1px dashed var(--devhub-border);
+  color: var(--devhub-muted);
+  text-align: center;
+}
+
+#windows-7-root .devhub-empty button,
+#windows-7-root .devhub-statusbar__retry {
+  padding: 4px 9px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 5px;
+  background: #21262d;
+  color: var(--devhub-text);
+  cursor: pointer;
+}
+
+.devhub-skill-matrix {
+  display: grid;
+  gap: 12px;
+}
+
+.devhub-skill-group {
+  padding: 14px 16px;
+  border: 1px solid var(--devhub-border);
+  border-radius: 6px;
+  background: var(--devhub-surface);
+}
+
+.devhub-skill-group h3 {
+  color: var(--devhub-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.devhub-skill-group > p {
+  margin-top: 3px !important;
+  color: var(--devhub-muted);
+}
+
+.devhub-skill-group ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 18px;
+  margin-top: 12px !important;
+}
+
+.devhub-skill-group li {
+  min-width: 0;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(48, 54, 61, .75);
+}
+
+.devhub-skill-group__level {
+  flex: 0 0 auto;
+  color: var(--devhub-muted);
+  font-size: 10px;
+}
+
+#windows-7-root .devhub-window footer.devhub-statusbar {
+  position: relative;
+  z-index: 8;
+  min-width: 0;
+  height: 24px;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
+  border-top: 1px solid var(--devhub-border);
+  background: #010409;
+  box-shadow: none;
+  color: var(--devhub-muted);
+  font-size: 10px;
+}
+
+#windows-7-root .devhub-window footer.devhub-statusbar::before {
+  content: none;
+}
+
+.devhub-statusbar > span:nth-child(2) {
+  margin-left: auto;
+}
+
+#windows-7-root .devhub-statusbar__retry {
+  padding: 1px 6px;
+  font-size: 9px;
+}
+
+.devhub-tooltip,
+.devhub-toast {
+  position: absolute;
+  z-index: 30;
+  right: 12px;
+  bottom: 31px;
+  max-width: min(320px, calc(100% - 24px));
+  padding: 7px 10px;
+  border: 1px solid #484f58;
+  border-radius: 6px;
+  background: #24292f;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+  color: #fff;
+  font-size: 10px;
+}
+
+.devhub-tooltip[hidden],
+.devhub-toast[hidden],
+.devhub-statusbar__retry[hidden] {
+  display: none !important;
+}
+
+.devhub-toast {
+  border-color: #9e6a03;
+  background: #2d2305;
+}
+
+.devhub-profile::-webkit-scrollbar,
+.devhub-main::-webkit-scrollbar,
+.devhub-contribution-graph::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.devhub-profile::-webkit-scrollbar-track,
+.devhub-main::-webkit-scrollbar-track,
+.devhub-contribution-graph::-webkit-scrollbar-track {
+  background: var(--devhub-canvas);
+}
+
+.devhub-profile::-webkit-scrollbar-thumb,
+.devhub-main::-webkit-scrollbar-thumb,
+.devhub-contribution-graph::-webkit-scrollbar-thumb {
+  border: 2px solid var(--devhub-canvas);
+  border-radius: 6px;
+  background: var(--devhub-border);
+}
+
+@container devhub (max-width: 840px) {
+  .devhub-header {
+    grid-template-columns: max-content minmax(180px, 1fr);
+    gap: 10px;
+    padding-right: 10px;
+  }
+
+  .devhub-tabs {
+    grid-column: 1 / -1;
+    height: 37px;
+    justify-content: flex-start;
+  }
+
+  #windows-7-root .devhub-tab {
+    height: 37px;
+  }
+
+  .devhub-brand__name {
+    display: none;
+  }
+}
+
+@container devhub (max-width: 767px) {
+  .devhub-layout {
+    display: block;
+    overflow-y: auto;
+    scrollbar-color: var(--devhub-border) var(--devhub-canvas);
+  }
+
+  .devhub-profile,
+  .devhub-main {
+    overflow: visible;
+  }
+
+  .devhub-profile {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 0 18px;
+    padding: 18px;
+    border-right: 0;
+    border-bottom: 1px solid var(--devhub-border);
+  }
+
+  .devhub-avatar {
+    width: 112px;
+    grid-row: 1 / span 4;
+    margin: 0;
+  }
+
+  .devhub-profile__bio,
+  .devhub-edit-profile,
+  .devhub-profile__social,
+  .devhub-profile__metadata,
+  .devhub-profile__skills {
+    grid-column: 2;
+  }
+
+  .devhub-profile__bio {
+    margin-top: 9px !important;
+  }
+
+  .devhub-profile__skills {
+    grid-column: 1 / -1;
+  }
+
+  .devhub-main {
+    padding: 18px;
+  }
+
+  .devhub-repo-grid,
+  .devhub-repo-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container devhub (max-width: 520px) {
+  .devhub-header {
+    grid-template-columns: 1fr;
+  }
+
+  .devhub-brand {
+    display: none;
+  }
+
+  .devhub-search {
+    grid-column: 1;
+  }
+
+  .devhub-tabs {
+    overflow-x: auto;
+  }
+
+  .devhub-profile {
+    display: block;
+  }
+
+  .devhub-avatar {
+    width: 116px;
+    margin: 0 0 12px;
+  }
+
+  .devhub-skill-group ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .devhub-app *,
+  .devhub-app *::before,
+  .devhub-app *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .devhub-app,
+  .devhub-header,
+  .devhub-statusbar,
+  .devhub-repo-card,
+  .devhub-skill-group,
+  .devhub-contribution-graph,
+  .devhub-skill-pill {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  #windows-7-root .devhub-window footer.devhub-statusbar {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .devhub-tab--active::after,
+  .devhub-language,
+  .devhub-contribution-cell {
+    background: Highlight;
+  }
+}

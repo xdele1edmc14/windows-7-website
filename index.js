@@ -53,6 +53,9 @@
   const APP_SHORTCUTS = Object.freeze({
     about: Object.freeze({ name: "About", icon: ASSETS.about, glow: "72, 177, 232" }),
     chrome: Object.freeze({ name: "Chrome", icon: ASSETS.chrome, glow: "242, 194, 48" }),
+    youtube: Object.freeze({ name: "YouTube", icon: ASSETS.youtube, glow: "255, 0, 51" }),
+    devhub: Object.freeze({ name: "DevHub", icon: ASSETS.devhub, glow: "88, 166, 255" }),
+    "media-center": Object.freeze({ name: "Media Center", icon: ASSETS.mediaCenter, glow: "94, 204, 255" }),
     cmd: Object.freeze({ name: "Command Prompt", icon: ASSETS.cmd, glow: "104, 215, 122" }),
     calculator: Object.freeze({ name: "Calculator", icon: ASSETS.calculator, glow: "115, 172, 219" }),
     notepad: Object.freeze({ name: "Notepad", icon: ASSETS.notepad, glow: "94, 164, 219" }),
@@ -459,6 +462,19 @@
       return node;
     }
 
+    ensureAppShortcut(appName, name, icon, { x = 10, y = 182 } = {}) {
+      const existing = this.desktopItems.find((item) => item.type === "app-shortcut" && item.meta?.appName === appName);
+      if (existing) return existing;
+      const shortcut = this.create("/Desktop", "app-shortcut", name, {
+        icon,
+        meta: { appName },
+        x,
+        y
+      });
+      if (shortcut) shortcut.permanent = true;
+      return shortcut;
+    }
+
     updateFile(node, file, meta = {}) {
       if (!node || ["folder", "drive", "dvd", "computer", "recycle"].includes(node.type)) return false;
       node.file = file;
@@ -648,6 +664,7 @@
     #lastDesktopClick = { itemId: null, time: 0 };
     #desktopRefreshTimer = 0;
     #desktopMarquee = null;
+    #mediaCenterApp = null;
     #desktopSelectionState = {
       active: false,
       startX: 0,
@@ -679,6 +696,7 @@
     #profilePersistence = null;
     #profileApps = {};
     #pendingPinnedItems = [];
+    #presentationActive = true;
 
     constructor(root) {
       this.#root = root;
@@ -694,11 +712,14 @@
 
     async start() {
       await this.#initializeLocalProfile();
+      this.#ensureDefaultAppShortcuts();
       this.#configureRoot();
+      this.#mountMediaCenter();
       this.#configureDesktop();
       this.#configureDesktopItems();
       this.#bindWindowManager();
       this.#prepareAudioElements();
+      this.setPresentationActive(this.#presentationActive);
 
       // Browsers only guarantee unmuted media after a real user gesture. Gate
       // the boot once, then perform the full boot/login pipeline in the same
@@ -709,6 +730,12 @@
       startupGate.remove();
 
       await this.#runBootSequence();
+    }
+
+    #ensureDefaultAppShortcuts() {
+      this.#fileSystem.ensureAppShortcut("youtube", "YouTube", ASSETS.youtube, { x: 10, y: 182 });
+      this.#fileSystem.ensureAppShortcut("devhub", "DevHub", ASSETS.devhub, { x: 10, y: 254 });
+      this.#fileSystem.ensureAppShortcut("media-center", "Media Center", ASSETS.mediaCenter, { x: 10, y: 326 });
     }
 
     async #initializeLocalProfile() {
@@ -798,6 +825,23 @@
       this.#stopDeskAudio();
     }
 
+    // Responsive presentation changes are not shutdowns: preserve windows,
+    // profile state and boot progress, while silencing the hidden experience.
+    setPresentationActive(active) {
+      this.#presentationActive = active;
+      for (const audio of [this.#biosAudio, this.#startupAudio, this.#shutdownAudio,
+        this.#loginAudio, this.#criticalStopAudio, this.#navigationAudio, this.#deskAudio]) {
+        if (audio) audio.muted = !active;
+      }
+      this.#mediaCenterApp?.setPresentationActive?.(active);
+      if (!active) {
+        this.#cancelDrag();
+        this.#cancelResize();
+        this.#cancelDesktopItemDrag();
+        this.#cancelShellDrag();
+      }
+    }
+
     #configureRoot() {
       assignStyles(this.#root, {
         position: "fixed",
@@ -840,7 +884,9 @@
         const isFixedSize = windowElement.hasAttribute("data-fixed-size");
         const width = Math.min(preferredWidth, Math.max(1, desktopWidth - 32));
         const height = Math.min(preferredHeight, Math.max(1, desktopHeight - TASKBAR_HEIGHT - 32));
-        const cascadeOffset = windowElement.dataset.appWindow === "display" ? 0 : index * 24;
+        const cascadeOffset = windowElement.hasAttribute("data-window-centered") || windowElement.dataset.appWindow === "display"
+          ? 0
+          : index * 24;
 
         assignStyles(windowElement, {
           position: "absolute",
@@ -2208,6 +2254,7 @@
         if (event.key === "Escape") this.#closeDesktopContextMenu();
       }, { signal: this.#listeners.signal });
       window.addEventListener("resize", () => {
+        if (!this.#presentationActive) return;
         this.#closeDesktopContextMenu();
         this.#constrainDesktopItems();
       }, { signal: this.#listeners.signal });
@@ -4212,6 +4259,9 @@
       const iconSources = {
         about: ASSETS.about,
         chrome: ASSETS.chrome,
+        youtube: ASSETS.youtube,
+        devhub: ASSETS.devhub,
+        "media-center": ASSETS.mediaCenter,
         cmd: ASSETS.cmd,
         calculator: ASSETS.calculator,
         notepad: ASSETS.notepad,
@@ -4478,6 +4528,7 @@
         if (event.key === "Escape") this.#closeTrayFlyout();
       }, { signal: this.#listeners.signal });
       window.addEventListener("resize", () => {
+        if (!this.#presentationActive) return;
         if (this.#trayFlyout && this.#trayFlyoutOwner) {
           this.#positionTrayOverlay(this.#trayFlyout, this.#trayFlyoutOwner, 1);
         }
@@ -5217,6 +5268,8 @@
       this.#cancelShellDrag();
       this.#desktopMarquee?.destroy();
       this.#desktopMarquee = null;
+      window.Windows7MediaCenter?.unmountMediaCenter?.(this.#desktop);
+      this.#mediaCenterApp = null;
       this.#chromeApp?.destroy();
       this.#paintApp?.destroy();
       this.#photoViewerApp?.destroy();
@@ -5292,9 +5345,15 @@
         bounds: null
       });
 
+      this.#mountMediaCenter();
       this.#configureDesktop();
       this.#configureDesktopItems();
       this.#bindWindowManager();
+    }
+
+    #mountMediaCenter() {
+      this.#mediaCenterApp = window.Windows7MediaCenter?.mountMediaCenter?.(this.#desktop) ?? null;
+      this.#mediaCenterApp?.setPresentationActive?.(this.#presentationActive);
     }
 
     async #bootCleanSystem(previousScreen) {
@@ -6034,6 +6093,14 @@
     #bindWindowManager() {
       const options = { signal: this.#listeners.signal };
 
+      window.Windows7Welcome?.bindWelcomeHostBridge?.(this.#root, {
+        openApp: (appName) => this.#openAppWindow(appName),
+        closeApp: (appName) => {
+          const windowElement = this.#desktop.querySelector(`[data-app-window="${CSS.escape(appName)}"]`);
+          if (windowElement) void this.#closeWindow(windowElement);
+        }
+      }, options);
+
       this.#desktop.querySelector("[data-credits]")?.addEventListener("click", () => {
         window.location.assign("https://github.com/xdele1edmc14/");
       }, options);
@@ -6177,7 +6244,21 @@
       if (isClosed && !preserveDocument && appName === "notepad") {
         this.#notepadApp?.reset();
       }
+      if (isClosed && windowElement.hasAttribute("data-start-maximized") && !windowElement.classList.contains("maximized")) {
+        windowElement.dataset.restoreRect = JSON.stringify({
+          left: windowElement.style.left,
+          top: windowElement.style.top,
+          width: windowElement.style.width,
+          height: windowElement.style.height
+        });
+        windowElement.classList.add("maximized");
+        this.#layoutMaximizedWindow(windowElement);
+        windowElement.querySelector('button[aria-label="Maximize"]')?.setAttribute("aria-pressed", "true");
+      }
       windowElement.hidden = false;
+      windowElement.dispatchEvent(new CustomEvent("windows7:appopen", {
+        detail: { appName, fresh: isClosed }
+      }));
       if (isClosed) void openAeroWindow(windowElement);
       this.#ensureTaskButton(windowElement);
       if (windowElement.classList.contains("minimized")) {
@@ -6267,6 +6348,9 @@
       const appearances = {
         about: { icon: ASSETS.about, glow: "72, 177, 232" },
         chrome: { icon: ASSETS.chrome, glow: "242, 194, 48" },
+        youtube: { icon: ASSETS.youtube, glow: "255, 0, 51" },
+        devhub: { icon: ASSETS.devhub, glow: "88, 166, 255" },
+        "media-center": { icon: ASSETS.mediaCenter, glow: "94, 204, 255" },
         cmd: { icon: ASSETS.cmd, glow: "104, 215, 122" },
         calculator: { icon: ASSETS.calculator, glow: "115, 172, 219" },
         display: { icon: ASSETS.controlPanel, glow: "73, 161, 219" },
@@ -6559,8 +6643,13 @@
       if (this.#resize?.windowElement === windowElement) this.#cancelResize();
       this.#windowAnimations.get(windowElement)?.cancel();
       this.#windowAnimations.delete(windowElement);
-
       await closeAeroWindow(windowElement);
+
+      if (windowElement.dataset.appWindow) {
+        windowElement.dispatchEvent(new CustomEvent("windows7:appclose", {
+          detail: { appName: windowElement.dataset.appWindow }
+        }));
+      }
 
       const explorerState = this.#explorerWindows.get(windowElement.id);
       if (explorerState) {
@@ -6736,6 +6825,7 @@
     }
 
     #handleResize() {
+      if (!this.#presentationActive) return;
       this.#desktop.querySelectorAll(".window").forEach((windowElement) => {
         if (windowElement.classList.contains("maximized")) {
           this.#layoutMaximizedWindow(windowElement);
@@ -6782,9 +6872,14 @@
 
   const root = document.getElementById("windows-7-root");
   if (root) {
-    const engine = new Windows7Engine(root);
-    void engine.start().catch((error) => {
-      console.error("Windows 7 engine failed to start.", error);
-    });
+    const startWindows = () => {
+      const engine = new Windows7Engine(root);
+      void engine.start().catch((error) => {
+        console.error("Windows 7 engine failed to start.", error);
+      });
+      return engine;
+    };
+    if (window.PortfolioShell) window.PortfolioShell.registerWindows(startWindows);
+    else startWindows();
   }
 })();

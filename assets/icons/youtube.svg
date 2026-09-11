@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="YouTube">
+  <defs>
+    <linearGradient id="youtube-red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff3355"/>
+      <stop offset="1" stop-color="#d90024"/>
+    </linearGradient>
+    <filter id="youtube-shadow" x="-20%" y="-25%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.7" flood-color="#000" flood-opacity=".42"/>
+    </filter>
+  </defs>
+  <rect x="4" y="9" width="40" height="30" rx="9" fill="url(#youtube-red)" stroke="#a50019" stroke-width="1.25" filter="url(#youtube-shadow)"/>
+  <path d="M20 16.8 33 24 20 31.2Z" fill="#fff"/>
+  <path d="M9 13.5c7-2.3 23-2.3 30 0" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="2" stroke-linecap="round"/>
+</svg>

@@ -3,115 +3,124 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const projectRoot = path.join(__dirname, "..");
-const read = (...segments) => fs.readFileSync(path.join(projectRoot, ...segments), "utf8");
+const phoneRoot = path.join(__dirname, "..", "Phone-UI");
+const html = fs.readFileSync(path.join(phoneRoot, "index.html"), "utf8");
+const css = fs.readFileSync(path.join(phoneRoot, "main.css"), "utf8");
 
-test("the standalone entry loads Framework7 Core, Framework7 Icons, and viewport-fit cover", () => {
-  const html = read("Phone-UI", "index.html");
-  const frameworkScript = '<script src="../node_modules/framework7/framework7-bundle.min.js" defer></script>';
-  const coreScript = '<script src="./ios-boot-core.js?v=20260809-3" defer></script>';
-  const appScript = '<script src="./app.js?v=20260809-3" defer></script>';
+// Static entry contracts supplement browser QA: they do not prove focus trapping,
+// generated launcher behavior, computed styles, or gesture/controller correctness.
+const tags = [...html.matchAll(/<([a-z][\w-]*)\b([^<>]*)>/gi)].map(([, tag, source]) => {
+  const attrs = {};
+  for (const [, name, double, single, bare] of source.matchAll(/([^\s=/'">]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)) {
+    attrs[name.toLowerCase()] = double ?? single ?? bare ?? "";
+  }
+  return { tag: tag.toLowerCase(), attrs };
+});
+const byId = id => tags.find(el => el.attrs.id === id);
+const byClass = name => tags.find(el => (el.attrs.class || "").split(/\s+/).includes(name));
+const has = (el, attr) => Object.hasOwn(el.attrs, attr);
+const localPath = url => path.resolve(phoneRoot, decodeURIComponent(url.split(/[?#]/)[0]));
+const isLocal = url => !/^(?:[a-z][\w+.-]*:|\/\/|#)/i.test(url);
 
-  assert.match(html, /name="viewport"[^>]*viewport-fit=cover/);
-  assert.doesNotMatch(html, /maximum-scale|user-scalable/);
-  assert.match(html, /framework7\/framework7-bundle\.min\.css/);
-  assert.match(html, /framework7-icons\/css\/framework7-icons\.css/);
-  assert.match(html, /<link rel="stylesheet" href="\.\/main\.css"/);
-  assert.doesNotMatch(html, /type="(?:module|importmap)"/);
-  assert.ok(html.includes(frameworkScript), "the local Framework7 browser bundle must load");
-  assert.ok(html.includes(coreScript), "the boot core must load as a deferred classic script");
-  assert.ok(html.includes(appScript), "the app must load as a deferred classic script");
-  assert.ok(html.indexOf(frameworkScript) < html.indexOf(coreScript));
-  assert.ok(html.indexOf(coreScript) < html.indexOf(appScript));
+test("entry loads CDN styles and deferred classic dependencies in order", () => {
+  const scripts = tags.filter(el => el.tag === "script" && el.attrs.src);
+  const frameworkIndex = scripts.findIndex(el => /^https:\/\/cdn\.jsdelivr\.net\/npm\/framework7@[^/]+\/framework7-bundle\.min\.js$/.test(el.attrs.src));
+  assert.ok(frameworkIndex >= 0, "Framework7 must load from the CDN");
+  let previous = frameworkIndex;
+  for (const file of ["ios-boot-core.js", "home-core.js", "app.js"]) {
+    const index = scripts.findIndex(el => isLocal(el.attrs.src) && localPath(el.attrs.src) === path.join(phoneRoot, file));
+    assert.ok(index > previous, file + " must follow its dependencies");
+    previous = index;
+  }
+  for (const script of scripts) {
+    assert.ok(has(script, "defer"), script.attrs.src + " must wait for parsed markup");
+    assert.ok(!has(script, "async"), "async can reorder dependencies");
+    assert.ok(!script.attrs.type || /^(?:text|application)\/javascript$/.test(script.attrs.type), "entry scripts use classic globals");
+  }
+  const styles = tags.filter(el => el.tag === "link" && el.attrs.rel === "stylesheet");
+  const frameworkStyle = styles.findIndex(el => /^https:\/\/cdn\.jsdelivr\.net\/npm\/framework7@[^/]+\/framework7-bundle\.min\.css$/.test(el.attrs.href));
+  const iconStyle = styles.findIndex(el => /^https:\/\/cdn\.jsdelivr\.net\/npm\/framework7-icons@[^/]+\/css\/framework7-icons\.css$/.test(el.attrs.href));
+  const shellStyle = styles.findIndex(el => isLocal(el.attrs.href) && localPath(el.attrs.href) === path.join(phoneRoot, "main.css"));
+  assert.ok(frameworkStyle >= 0 && iconStyle >= 0);
+  assert.ok(shellStyle > frameworkStyle && shellStyle > iconStyle, "shell overrides follow vendor styles");
+  assert.equal(scripts[frameworkIndex].attrs.src.match(/framework7@([^/]+)/)[1], styles[frameworkStyle].attrs.href.match(/framework7@([^/]+)/)[1], "framework JS and CSS versions must agree");
 });
 
-test("the boot layer contains only the supplied Apple logo and no progress UI", () => {
-  const html = read("Phone-UI", "index.html");
-  const bootContents = html.match(/<section class="boot-screen[^"]*"[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? "";
-
-  assert.match(bootContents, /<img[^>]*src="\.\.\/assets\/Phone-UI\/apple_logo\.jpg"/);
-  assert.equal((bootContents.match(/<img\b/g) ?? []).length, 1);
-  assert.doesNotMatch(bootContents, /progress|status|spinner|loading/i);
-  assert.doesNotMatch(bootContents, /<(p|span|div|button)\b/i);
+test("entry preserves zoom and boots with lock and home inert", () => {
+  const viewport = tags.find(el => el.tag === "meta" && el.attrs.name === "viewport");
+  assert.match(viewport?.attrs.content || "", /viewport-fit\s*=\s*cover/);
+  assert.doesNotMatch(viewport.attrs.content, /maximum-scale|user-scalable/i);
+  assert.equal(byId("ios-app")?.attrs["data-screen"], "boot");
+  assert.equal(byClass("phone-boot")?.attrs["aria-busy"], "true");
+  const lock = byId("lock-screen"), home = byId("home-screen");
+  assert.ok(lock?.attrs["aria-label"]);
+  assert.ok(!has(lock, "hidden") && has(lock, "inert"));
+  assert.equal(home?.tag, "main");
+  assert.ok(home.attrs["aria-label"] && has(home, "inert"));
+  assert.ok(tags.some(el => el.attrs["aria-live"] === "polite"), "phase changes have an announcement region");
 });
 
-test("welcome and desktop expose the approved visible content and semantics", () => {
-  const html = read("Phone-UI", "index.html");
-
-  assert.match(html, /data-welcome-screen/);
-  assert.match(html, /data-welcome-screen[\s\S]*?role="button"/);
-  assert.match(html, /aria-describedby="swipe-instruction"/);
-  assert.match(html, /data-greeting[^>]*>Hello</);
-  assert.match(html, /Swipe up to open/);
-  assert.match(html, /data-home-indicator/);
-  assert.match(html, /data-desktop-screen/);
-  assert.match(html, /\.\.\/assets\/Phone-UI\/ios-wallpaper\.svg/);
-  assert.match(html, /<article[^>]*data-development-card[^>]*tabindex="-1"/);
-  assert.match(html, /<h1>Under Development<\/h1>/);
-  assert.match(
-    html,
-    /System components and application environments are currently being compiled\./
-  );
-  assert.match(html, /aria-live="polite"/);
+test("launchers expose named native keyboard controls and navigation mounts", () => {
+  for (const name of ["unlock-target", "app-home-target", "search-launcher"]) {
+    const control = byClass(name);
+    assert.equal(control?.tag, "button", name + " must support native Enter and Space activation");
+    assert.ok(control.attrs["aria-label"]?.trim(), name + " needs an accessible name");
+    assert.ok(!has(control, "disabled") && control.attrs.tabindex !== "-1");
+  }
+  for (const name of ["page-dots", "dock"]) {
+    const launcher = byClass(name);
+    assert.equal(launcher?.tag, "nav");
+    assert.ok(launcher.attrs["aria-label"]?.trim());
+  }
+  assert.ok(byId("page-track"), "controller needs its page launcher mount");
+  assert.equal(byClass("done-button")?.tag, "button");
+  const flashlight = tags.find(el => el.tag === "button" && el.attrs["aria-label"] === "Flashlight");
+  assert.equal(flashlight?.attrs["aria-pressed"], "false", "toggle exposes its initial state");
 });
 
-test("main.css owns viewport, safe-area, frame, material, and preference behavior", () => {
-  const css = read("Phone-UI", "main.css");
-  const compact = css.replace(/\s+/g, " ");
-
-  assert.match(compact, /min-height:\s*100dvh/);
-  assert.match(compact, /min-height:\s*-webkit-fill-available/);
-  assert.match(compact, /padding-top:\s*env\(safe-area-inset-top\)/);
-  assert.match(compact, /padding-bottom:\s*env\(safe-area-inset-bottom\)/);
-  assert.match(compact, /padding-left:\s*env\(safe-area-inset-left\)/);
-  assert.match(compact, /padding-right:\s*env\(safe-area-inset-right\)/);
-  assert.match(compact, /background:\s*#000(?:000)?/);
-  assert.match(compact, /\.dynamic-island/);
-  assert.match(compact, /aspect-ratio:\s*390\s*\/\s*844/);
-  assert.match(compact, /@media \(min-width:\s*700px\) and \(hover:\s*hover\) and \(pointer:\s*fine\)/);
-  assert.match(compact, /backdrop-filter:\s*blur\(/);
-  assert.match(compact, /@media \(prefers-reduced-motion:\s*reduce\)/);
-  assert.match(compact, /@media \(prefers-reduced-transparency:\s*reduce\)/);
-  assert.match(compact, /@media \(prefers-contrast:\s*more\)/);
-  assert.match(compact, /:focus-visible/);
-  assert.match(compact, /@keyframes swipe-prompt-pulse[\s\S]*?opacity:\s*0\.82/);
+test("app, Spotlight, and removal dialogs have names and start unavailable", () => {
+  for (const modal of [byId("app-surface"), byClass("spotlight"), byClass("remove-sheet")]) {
+    assert.equal(modal?.attrs.role, "dialog");
+    assert.equal(modal.attrs["aria-modal"], "true");
+    const labelIds = (modal.attrs["aria-labelledby"] || "").split(/\s+/).filter(Boolean);
+    assert.ok(modal.attrs["aria-label"]?.trim() || labelIds.length, "dialog needs a name");
+    for (const id of labelIds) assert.ok(byId(id), "dialog title " + id + " must exist");
+  }
+  for (const modal of [byId("app-surface"), byClass("spotlight")]) assert.ok(has(modal, "hidden") && has(modal, "inert"));
+  assert.ok(has(byClass("remove-backdrop"), "hidden"));
+  for (const name of ["spotlight-cancel", "remove-cancel"]) assert.equal(byClass(name)?.tag, "button");
+  for (const action of ["hide", "delete"]) {
+    assert.ok(tags.some(el => el.tag === "button" && el.attrs["data-remove"] === action), action + " must be keyboard activatable");
+  }
 });
 
-test("browser orchestration gates assets and uses one interruptible pointer flow", () => {
-  const source = read("Phone-UI", "app.js");
-
-  assert.match(source, /window\.Framework7/);
-  assert.match(source, /window\.IOSBootCore/);
-  assert.match(source, /new Framework7\(/);
-  assert.match(source, /\.\.\/assets\/Phone-UI\/apple_logo\.jpg/);
-  assert.match(source, /\.\.\/assets\/Phone-UI\/ios-wallpaper\.svg/);
-  assert.match(source, /const assetPreloaderPromise\s*=\s*Promise\.all\(/);
-  assert.match(source, /preloadImageAssets\(UI_IMAGE_ASSETS\)/);
-  assert.match(source, /document\.fonts\.load\(/);
-  assert.match(source, /waitForBootReady\(assetPreloaderPromise\)/);
-  assert.match(source, /addEventListener\("pointerdown"/);
-  assert.match(source, /addEventListener\("pointermove"/);
-  assert.match(source, /addEventListener\("pointerup"/);
-  assert.match(source, /addEventListener\("pointercancel"/);
-  assert.match(source, /addEventListener\("click"/);
-  assert.match(source, /setPointerCapture\(/);
-  assert.match(source, /releasePointerCapture\(/);
-  assert.match(source, /requestAnimationFrame\(/);
-  assert.match(source, /activeSpring\?\.cancel\(\)/);
-  assert.match(source, /shouldDismissSwipe\(/);
-  assert.match(source, /commitDesktopPhase\(/);
-  assert.match(source, /case "ArrowUp"/);
-  assert.match(source, /case "Enter"/);
-  assert.match(source, /case " "/);
+test("Spotlight provides a labeled native search field and non-submitting cancel", () => {
+  const form = byClass("spotlight-form");
+  assert.equal(form?.tag, "form");
+  assert.equal(form.attrs.role, "search");
+  const input = tags.find(el => el.tag === "input" && el.attrs.type === "search");
+  assert.ok(input?.attrs["aria-label"]?.trim(), "placeholder text is not an accessible label");
+  assert.ok(!has(input, "disabled") && input.attrs.tabindex !== "-1");
+  assert.equal(byClass("spotlight-cancel").attrs.type, "button");
 });
 
-test("every image referenced by the phone UI exists before browser preloading", () => {
-  for (const relativePath of [
-    path.join("assets", "Phone-UI", "apple_logo.jpg"),
-    path.join("assets", "Phone-UI", "ios-wallpaper.svg")
-  ]) {
-    const absolutePath = path.join(projectRoot, relativePath);
-    assert.equal(fs.existsSync(absolutePath), true, `${relativePath} must exist`);
-    assert.ok(fs.statSync(absolutePath).size > 0, `${relativePath} must not be empty`);
+test("local entry assets and CSS image references exist and are nonempty", () => {
+  const references = tags.flatMap(el => [el.attrs.src, el.attrs.href]).filter(Boolean);
+  const images = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map(match => match[1].trim());
+  const preload = tags.find(el => el.tag === "link" && el.attrs.rel === "preload" && el.attrs.as === "image");
+  assert.ok(preload && images.includes(preload.attrs.href), "preload must warm an image actually used by the shell");
+  for (const url of new Set([...references, ...images].filter(isLocal))) {
+    const asset = localPath(url);
+    assert.ok(fs.existsSync(asset), url + " must exist");
+    const stat = fs.statSync(asset);
+    assert.ok(stat.isFile() && stat.size > 0, url + " must be a nonempty file");
+  }
+});
+
+test("shell supplies visible focus and user preference style hooks", () => {
+  assert.match(css, /:focus-visible\s*\{[^}]*outline\s*:/, "keyboard focus must have a visible indicator");
+  assert.match(css, /\[hidden\]\s*\{[^}]*display:\s*none\s*!important/, "component layout must not override hidden dialogs");
+  for (const preference of ["prefers-reduced-motion", "prefers-reduced-transparency", "prefers-contrast"]) {
+    assert.ok(css.includes("(" + preference + ":"), preference + " needs a style hook; browser QA verifies the result");
   }
 });

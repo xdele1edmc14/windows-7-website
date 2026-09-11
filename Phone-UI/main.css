@@ -1,448 +1,174 @@
 :root {
-  color-scheme: light;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
-  --ios-label: #111114;
-  --ios-secondary-label: rgba(31, 31, 38, 0.68);
-  --ios-separator: rgba(60, 60, 67, 0.22);
-  --ios-material: rgba(246, 246, 250, 0.68);
-  --ios-material-solid: #f3f3f7;
-  --ios-card-radius: 28px;
-  --welcome-y: 0px;
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  --ios-accent: #007aff;
+  --screen-h: 852px;
+  --screen-w: 393px;
+  --screen-scale: 1;
+  --icon-size: 62px;
+  --icon-radius: 14px;
+  --glass-edge: rgba(235, 225, 255, .28);
+  --glass-fill: rgba(37, 32, 83, .22);
+  --open-ease: cubic-bezier(.2, .8, .2, 1);
 }
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { background: #19191c; color: white; overscroll-behavior: none; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button, input { font: inherit; }
+/* Override Framework7's full-width button reset; explicit shell targets below
+   own their dimensions (otherwise Cancel collapses the Spotlight input). */
+button { appearance: none; width: auto; border: 0; padding: 0; color: inherit; background: none; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid #8dcbff; outline-offset: 3px; }
+[hidden] { display: none !important; }
+.device-stage { width: 100%; height: 100dvh; min-height: 100dvh; display: grid; place-items: center; overflow: hidden; }
+.iphone-frame { position: relative; width: 100%; height: 100%; overflow: hidden; background: #070611; isolation: isolate; }
+/* Every pixel below is in 393-point coordinates. JS scales the entire canvas,
+   including typography, gesture deltas, radii and Dynamic Island together.
+   1290x2796 differs from 393x852 @3x (1179x2556); use the requested logical size.
+   Other aspect ratios extend the wallpaper and anchor space around the reference. */
+.ios-app { position: absolute; width: var(--screen-w); height: var(--screen-h); transform: scale(var(--screen-scale)); transform-origin: top left; overflow: hidden; isolation: isolate; touch-action: none; user-select: none; -webkit-user-select: none; }
+.wallpaper { position: absolute; inset: 0; background: url('./wallpaper.png') center / cover no-repeat; pointer-events: none; }
+/* Untouched supplied raster. Reference has a lighter lavender treatment:
+   these estimated screen-blended tints color-grade the image; they are not blur. */
+.wallpaper::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 0% 34%, #aa86c1 0%, #65578988 36%, transparent 67%), radial-gradient(ellipse at 71% 60%, #aa8cbc 0%, transparent 45%), linear-gradient(90deg, #28153755, transparent 76%, #77648d); mix-blend-mode: screen; opacity: .84; }
+.glass { border: .7px solid var(--glass-edge); background: var(--glass-fill); backdrop-filter: blur(22px) saturate(135%); -webkit-backdrop-filter: blur(22px) saturate(135%); box-shadow: inset 0 .6px 1px rgba(255,255,255,.1); }
+.home-screen, .home-depth, .page-viewport, .lock-screen { position: absolute; inset: 0; }
+.home-screen { z-index: 2; }
+.home-depth { transform-origin: 50% 52%; will-change: transform, filter; }
+.page-viewport { overflow: hidden; }
+.page-track { display: flex; width: 100%; height: 100%; will-change: transform; }
+.home-page { position: relative; flex: 0 0 var(--screen-w); height: 100%; }
+/* Screenshot centers ~61/151/242/333, 62-point icons, ~98-point row pitch. */
+.icon-grid { position: absolute; top: calc(var(--screen-h) * .078); left: calc(50% - 166.5px); width: 333px; display: grid; grid-template-columns: repeat(4, 62px); grid-template-rows: repeat(6, minmax(0, 1fr)); height: calc(var(--screen-h) * .689); column-gap: 28.333px; }
+.icon-cell { position: relative; min-width: 0; width: 76px; justify-self: center; align-self: start; }
+.app-icon { display: flex; flex-direction: column; align-items: center; width: 76px; gap: 4px; touch-action: none; }
+.icon-swatch { display: grid; place-items: center; width: var(--icon-size); height: var(--icon-size); border-radius: var(--icon-radius); background: var(--app-color); color: #fff; font-size: 32px; line-height: 1; font-weight: 500; letter-spacing: -1px; box-shadow: inset 0 1px 1px #ffffff50, 0 1px 2px #00000015; }
+.icon-label { display: block; max-width: 89px; white-space: nowrap; font-size: 11.5px; font-weight: 400; line-height: 17px; text-shadow: 0 1px 3px #0005; letter-spacing: .02px; }
+.notification-badge { position: absolute; right: -1px; top: -10px; min-width: 24px; height: 24px; padding: 0 6px; display: grid; place-items: center; background: #ff373e; border-radius: 16px; font-size: 15px; line-height: 1; pointer-events: none; }
+.delete-badge { display: none; position: absolute; z-index: 3; top: -17px; left: -10px; width: 44px; height: 44px; align-items: center; justify-content: center; }
+.delete-badge::after { content: '−'; display: grid; place-items: center; width: 23px; height: 23px; background: #ff453a; border-radius: 50%; font-size: 22px; line-height: 1; box-shadow: 0 1px 3px #0003; }
+.is-editing .delete-badge { display: flex; }
+.is-editing .notification-badge { display: none; }
+.is-editing .icon-swatch { animation: wiggle var(--wiggle-duration, .28s) ease-in-out var(--wiggle-delay, 0s) infinite alternate; }
+@keyframes wiggle { from { transform: rotate(-1.6deg) translateY(-.3px); } to { transform: rotate(1.6deg) translateY(.3px); } }
+.done-button { position: absolute; top: 29px; right: 22px; z-index: 3; min-width: 61px; min-height: 44px; padding: 0 14px; border-radius: 25px; font-size: 15px; font-weight: 600; }
+.widget { position: relative; grid-column: span 2; grid-row: span 2; align-self: start; width: 160px; margin-left: -4px; height: 160px; border-radius: 29px; background: rgba(17,16,24,.78); border: .7px solid #e4d4ff5c; box-shadow: inset 0 1px 1px #fff1; }
+.widget-caption { position: absolute; top: 100%; left: 0; right: 0; padding-top: 4px; text-align: center; font-size: 11.5px; text-shadow: 0 1px 3px #0005; }
+.battery-widget { grid-column: 3 / 5; grid-row: 1 / 3; margin-left: -2px; background: rgba(29,26,46,.85); }
+.battery-ring { position: absolute; top: 9px; left: 10px; width: 68px; height: 68px; }
+.battery-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.battery-ring circle { fill: none; stroke: #ffffff20; stroke-width: 5.5; }
+.battery-ring circle:last-child { stroke: #ffe000; stroke-linecap: round; stroke-dasharray: 73 100; }
+.battery-ring i { position: absolute; inset: 0; width: 68px; height: 68px; display: grid; place-items: center; font-size: 24px; }
+.battery-value { position: absolute; bottom: 7px; left: 10px; font-size: 43px; font-weight: 300; line-height: 1.1; letter-spacing: -2px; }
+.clock-widget { grid-column: 1 / 3; grid-row: 3 / 5; background: linear-gradient(145deg, #333, #1d1d1d 80%); border-color: #aaa8; }
+.clock-face { position: absolute; inset: 11px; border-radius: 50%; background: #303032; }
+.clock-tick { position: absolute; width: 1.5px; height: 5px; background: #777; left: calc(50% - .75px); top: 4px; transform-origin: .75px 65px; }
+.clock-tick.major { height: 6px; background: #a5a5a5; }
+.clock-number { position: absolute; font-size: 16px; font-weight: 600; transform: translate(-50%, -50%); line-height: 1; }
+.clock-city { position: absolute; top: 27%; width: 100%; text-align: center; font-size: 11px; color: #aaa; font-weight: 600; }
+.clock-hand { position: absolute; bottom: 50%; left: calc(50% - 1.5px); width: 3px; border-radius: 5px; background: #eee; transform-origin: 50% 100%; }
+.clock-hour { height: 27%; width: 4px; left: calc(50% - 2px); }
+.clock-minute { height: 40%; }
+.clock-second { height: 44%; width: 1px; left: calc(50% - .5px); background: #ffab18; }
+.clock-pin { position: absolute; width: 7px; height: 7px; top: calc(50% - 3.5px); left: calc(50% - 3.5px); border: 2px solid #eee; background: #f6a013; border-radius: 50%; }
+.home-navigation { position: absolute; left: 0; right: 0; bottom: 126px; display: grid; justify-items: center; gap: 1px; }
+.page-dots { display: flex; align-items: center; justify-content: center; height: 22px; }
+.page-dot { width: 24px; height: 30px; display: grid; place-items: center; }
+.page-dot::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #ffffff65; }
+.page-dot[aria-current="page"]::after { background: #fff; }
+.search-launcher { display: flex; width: max-content; gap: 4px; align-items: center; justify-content: center; padding: 0 10px; height: 28px; border-radius: 20px; font-size: 12px; color: #ddd9f8; }
+.search-launcher::before { content: ''; position: absolute; width: 80px; height: 44px; }
+.search-launcher i { font-size: 12px; }
+.dock { position: absolute; bottom: 13px; left: calc(50% - 183.5px); width: 367px; height: 96px; border-radius: 42px; display: grid; grid-template-columns: repeat(4,1fr); align-items: center; padding: 0 10px; background: rgba(55,45,120,.21); }
+.dock .icon-cell { align-self: center; }
+.dock .icon-label { display: none; }
+.status-bar { position: absolute; z-index: 30; top: 11px; left: 40px; right: 27px; height: 22px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font-size: 16px; font-weight: 600; letter-spacing: -.5px; }
+.status-right { display: flex; align-items: center; gap: 6px; }
+.status-right > i { font-size: 19px; font-weight: 600; }
+.signal { display: flex; align-items: flex-end; height: 12px; gap: 2px; }
+.signal b { width: 3px; height: 5px; border-radius: 1px; background: white; }
+.signal b:nth-child(2) { height: 7px; }
+.signal b:nth-child(3) { height: 10px; opacity: .3; }
+.signal b:nth-child(4) { height: 12px; opacity: .3; }
+.battery { position: relative; display: block; width: 23px; height: 13px; border-radius: 4px; background: #ffffff55; }
+.battery::after { content: ''; position: absolute; width: 1.5px; height: 5px; top: 4px; right: -2.5px; border-radius: 0 2px 2px 0; background: #ffffff77; }
+.battery::before { content: ''; position: absolute; inset: 0 27% 0 0; background: #ffe000; border-radius: 4px 0 0 4px; }
+.battery span { position: relative; display: block; color: #080808; font-size: 11px; font-weight: 750; line-height: 13px; text-align: center; letter-spacing: -.5px; }
+.dynamic-island { display: none; }
+.phone-boot { position: absolute; transition: opacity 450ms ease; }
+.phone-boot.is-ready { opacity: 0; pointer-events: none; }
+.boot-error { position: absolute; bottom: 15%; left: 30px; right: 30px; text-align: center; font-size: 14px; }
+.boot-retry { min-width: 100px; min-height: 44px; color: #86bdff; }
+.ios-app[data-screen="boot"] > :not(.phone-boot):not(.visually-hidden) { visibility: hidden; }
+.lock-screen { z-index: 20; will-change: transform; }
+/* Estimated lock treatment: 0.6pt image blur and slight lift. Clock uses a
+   separate genuine 8pt backdrop blur clipped to the digit outlines. */
+.lock-wallpaper { filter: blur(.6px) brightness(1.08); }
+.lock-date { position: absolute; top: calc(var(--screen-h) * .112); left: 0; right: 0; margin: 0; text-align: center; font-size: 20px; font-weight: 600; letter-spacing: -.4px; }
+.lock-clock { position: absolute; top: calc(var(--screen-h) * .146); left: calc(50% - 156.5px); width: 313px; height: 220px; background: linear-gradient(140deg, #ece4ff50, #d9b6ff9c); backdrop-filter: blur(8px) brightness(1.3); -webkit-backdrop-filter: blur(8px) brightness(1.3); mask: var(--clock-mask) center / 100% 100% no-repeat; -webkit-mask: var(--clock-mask) center / 100% 100% no-repeat; filter: drop-shadow(.7px .5px .3px #f5eaff9e); }
+/* Foreground depth silhouette estimated from screenshot using same wallpaper.
+   The lower-left arc crosses the clock around 32.4% of screen height. */
+.lock-foreground { clip-path: polygon(0 32.4%, 9% 34%, 20% 37%, 30% 40.5%, 40% 45%, 50% 50.5%, 60% 57%, 69% 64%, 78% 72%, 100% 100%, 0 100%); filter: brightness(1.08); }
+.lock-actions { position: absolute; left: calc(50% - 147.5px); width: 295px; bottom: 53px; display: flex; justify-content: space-between; align-items: center; }
+.lock-shortcut { width: 54px; height: 54px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: #302e9740; }
+.lock-shortcut i { font-size: 26px; }
+.flashlight-symbol { width: 17px; height: 31px; }
+.lock-shortcut[aria-pressed="true"] { color: #181728; background: #eee; }
+.notifications { display: flex; gap: 5px; align-items: center; white-space: nowrap; font-size: 14px; }
+.notifications > span { width: 10px; height: 10px; background: white; border-radius: 50%; }
+.unlock-target, .app-home-target { position: absolute; bottom: 0; left: 0; width: 100%; height: 44px; display: grid; justify-items: center; align-items: end; padding-bottom: 8px; touch-action: none; }
+.home-indicator { display: block; width: 141px; height: 4px; border-radius: 10px; background: white; }
+.app-surface { position: absolute; z-index: 10; top: 0; left: 0; width: var(--screen-w); height: var(--screen-h); overflow: hidden; transform-origin: 0 0; will-change: transform, width, height, border-radius; box-shadow: 0 12px 50px #0002; }
+.app-content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.app-initial { font-size: 64px; font-weight: 400; line-height: 1; }
+.app-content h1 { position: absolute; top: calc(50% + 48px); margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.5px; white-space: nowrap; }
+.app-home-target { z-index: 2; }
+.spotlight { position: absolute; z-index: 25; inset: 0; background: #201b4066; backdrop-filter: blur(40px) saturate(130%); -webkit-backdrop-filter: blur(40px) saturate(130%); opacity: 0; }
+.spotlight-content { position: absolute; top: 64px; left: 22px; right: 22px; will-change: transform; }
+.spotlight-form { display: flex; align-items: center; gap: 9px; }
+.spotlight-field { display: flex; align-items: center; flex: 1; min-width: 0; height: 44px; padding: 0 13px; border-radius: 24px; background: #eeeeff23; }
+.spotlight-field i { font-size: 19px; color: #fff9; }
+.spotlight-field input { width: 100%; height: 44px; padding: 0 8px; color: white; font-size: 17px; user-select: text; -webkit-user-select: text; }
+.spotlight-field input::placeholder { color: #ffffff90; }
+.spotlight-field input:focus-visible { outline: none; }
+.spotlight-field:focus-within { border-color: #c9d5ff99; box-shadow: inset 0 0 0 .5px #c9d5ff55; }
+.spotlight-cancel { min-height: 44px; font-size: 15px; }
+.suggestion-heading { margin: 27px 3px 10px; font-size: 14px; font-weight: 600; }
+.suggestions { display: grid; grid-template-columns: repeat(4,1fr); gap: 3px; padding: 16px 4px 12px; border-radius: 28px; background: #ffffff12; }
+.suggestions .delete-badge, .suggestions .notification-badge { display: none; }
+.remove-backdrop { position: absolute; z-index: 40; inset: 0; display: flex; align-items: flex-end; background: #0005; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.remove-sheet { width: 100%; padding: 0 10px max(12px, env(safe-area-inset-bottom)); color: #007aff; }
+.remove-options { overflow: hidden; border-radius: 15px; background: #eeeefff0; }
+.remove-heading { padding: 16px 18px; text-align: center; color: #737378; }
+.remove-heading h2 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.remove-heading p { margin: 0; font-size: 12px; line-height: 1.4; }
+.remove-options > button { display: block; width: 100%; min-height: 56px; border-top: .5px solid #3c3c433b; font-size: 20px; }
+.remove-options > button[data-remove="delete"] { color: #ff3b30; }
+.remove-cancel { display: block; width: 100%; min-height: 56px; border-radius: 15px; margin-top: 8px; font-size: 20px; font-weight: 600; background: #f9f9fff5; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Width alone controls this breakpoint; touch laptops/tablets also get a frame.
+   clamp scales the bezel; JS measures its actual inner dimensions on resize. */
+@media (min-width: 700px) {
+  .device-stage { padding: 22px; background: radial-gradient(ellipse at 50% 45%, #363439, #19191c 72%); }
+  .iphone-frame { height: min(900px, calc(100dvh - 44px)); width: auto; aspect-ratio: 411 / 870; border: clamp(5px, .8vh, 9px) solid #090909; border-radius: clamp(24px, 5.5vh, 56px); box-shadow: 0 0 0 1px #68666c, 0 0 0 3px #262529, 0 30px 70px #0008; }
+  .dynamic-island { display: block; position: absolute; z-index: 50; top: 9px; left: calc(50% - 50.5px); width: 101px; height: 27px; border-radius: 20px; background: #000; pointer-events: none; }
 }
-
-html,
-body {
-  width: 100%;
-  min-height: 100%;
-  margin: 0;
-  overflow: hidden;
-  background: #000000;
-  color: var(--ios-label);
-  -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
-}
-
-body {
-  overscroll-behavior: none;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-.device-stage {
-  display: grid;
-  width: 100%;
-  height: 100dvh;
-  min-height: 100dvh;
-  place-items: center;
-  overflow: hidden;
-  background: #000000;
-  transition: background 700ms ease;
-}
-
-@supports (-webkit-touch-callout: none) {
-  .device-stage {
-    min-height: -webkit-fill-available;
-  }
-}
-
-.iphone-frame {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  isolation: isolate;
-  background: #000000;
-}
-
-.ios-app,
-.app-host {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  background: #000000;
-}
-
-.safe-area-layer {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-}
-
-.boot-screen,
-.welcome-screen,
-.desktop-screen {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.boot-screen {
-  z-index: 30;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background: #000000;
-  opacity: 1;
-  visibility: visible;
-  transition: opacity 900ms cubic-bezier(0.22, 0.61, 0.36, 1), visibility 0s linear 900ms;
-}
-
-.boot-screen img {
-  display: block;
-  width: clamp(164px, 46vw, 210px);
-  height: auto;
-  max-width: 48%;
-  border: 0;
-  user-select: none;
-  pointer-events: none;
-}
-
-.welcome-screen {
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 76% 18%, rgba(218, 228, 255, 0.92), transparent 38%),
-    radial-gradient(circle at 18% 82%, rgba(255, 225, 232, 0.74), transparent 42%),
-    #f5f5f7;
-  opacity: 0;
-  visibility: hidden;
-  transform: translate3d(0, var(--welcome-y), 0);
-  will-change: transform;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  outline: none;
-  transition: opacity 900ms cubic-bezier(0.22, 0.61, 0.36, 1), visibility 0s linear 900ms;
-}
-
-.welcome-screen.is-dragging {
-  cursor: grabbing;
-}
-
-.greeting-stage {
-  display: grid;
-  width: 100%;
-  min-height: 148px;
-  padding: 0 28px;
-  place-items: center;
-}
-
-.greeting {
-  margin: 0;
-  color: #111114;
-  font-size: clamp(3.75rem, 15vw, 5.45rem);
-  font-weight: 200;
-  letter-spacing: -0.055em;
-  line-height: 0.98;
-  text-align: center;
-  text-wrap: balance;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 380ms ease, transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-.greeting.is-changing {
-  opacity: 0;
-  transform: translateY(9px);
-}
-
-.unlock-affordance {
-  position: absolute;
-  right: max(24px, env(safe-area-inset-right));
-  bottom: max(14px, env(safe-area-inset-bottom));
-  left: max(24px, env(safe-area-inset-left));
-  display: grid;
-  justify-items: center;
-  gap: 15px;
-  pointer-events: none;
-}
-
-.swipe-prompt {
-  margin: 0;
-  color: #4a4a52;
-  font-size: 0.94rem;
-  font-weight: 500;
-  letter-spacing: -0.015em;
-  line-height: 1.3;
-  animation: swipe-prompt-pulse 2.2s ease-in-out infinite;
-}
-
-.home-indicator {
-  width: min(36vw, 138px);
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(15, 15, 18, 0.88);
-}
-
-.desktop-screen {
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background: #0d1636;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 520ms ease, visibility 0s linear 520ms;
-}
-
-.desktop-wallpaper {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  user-select: none;
-  pointer-events: none;
-}
-
-.glass-surface {
-  background: var(--ios-material-solid);
-  background: var(--ios-material);
-  border: 1px solid rgba(255, 255, 255, 0.48);
-  -webkit-backdrop-filter: blur(28px) saturate(165%);
-  backdrop-filter: blur(28px) saturate(165%);
-}
-
-.development-card {
-  position: relative;
-  z-index: 1;
-  width: min(86%, 340px);
-  margin: 0;
-  overflow: hidden;
-  border-radius: var(--ios-card-radius);
-  box-shadow: 0 22px 60px rgba(3, 10, 31, 0.24), 0 2px 12px rgba(3, 10, 31, 0.12);
-  opacity: 0;
-  transform: translate3d(0, 54px, 0) scale(0.96);
-}
-
-.development-card .card-content {
-  padding: 25px 24px 26px;
-  text-align: center;
-}
-
-.development-card__eyebrow {
-  margin: 0 0 10px;
-  color: rgba(30, 48, 96, 0.66);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.development-card h1 {
-  margin: 0;
-  color: var(--ios-label);
-  font-size: clamp(1.45rem, 6vw, 1.75rem);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
-}
-
-.development-card p:last-child {
-  margin: 12px 0 0;
-  color: var(--ios-secondary-label);
-  font-size: 1rem;
-  font-weight: 400;
-  letter-spacing: -0.018em;
-  line-height: 1.42;
-}
-
-.dynamic-island {
-  display: none;
-}
-
-.ios-app[data-phase="welcome"] .boot-screen,
-.ios-app[data-phase="desktop"] .boot-screen {
-  opacity: 0;
-  visibility: hidden;
-}
-
-.ios-app[data-phase="welcome"] .desktop-screen,
-.ios-app[data-phase="desktop"] .desktop-screen {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 0s;
-}
-
-.ios-app[data-phase="welcome"] .welcome-screen {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 120ms, 0s;
-}
-
-.ios-app[data-phase="desktop"] .welcome-screen {
-  visibility: hidden;
-}
-
-.ios-app[data-phase="desktop"] .development-card {
-  animation: development-card-rise 720ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
-}
-
-.welcome-screen:focus-visible {
-  outline: 3px solid #007aff;
-  outline-offset: -6px;
-}
-
-.development-card:focus {
-  outline: none;
-}
-
-.visually-hidden {
-  position: fixed;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@keyframes swipe-prompt-pulse {
-  0%,
-  100% {
-    opacity: 0.82;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-4px);
-  }
-}
-
-@keyframes development-card-rise {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 54px, 0) scale(0.96);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-}
-
-@media (min-width: 700px) and (hover: hover) and (pointer: fine) {
-  .device-stage {
-    padding: 28px;
-  }
-
-  body:not([data-phase="boot"]) .device-stage {
-    background:
-      radial-gradient(circle at 50% 34%, rgba(84, 93, 117, 0.38), transparent 38%),
-      #111216;
-  }
-
-  .iphone-frame {
-    width: min(390px, calc((100dvh - 56px) * 390 / 844));
-    height: auto;
-    max-height: calc(100dvh - 56px);
-    aspect-ratio: 390 / 844;
-    border: 9px solid #000000;
-    border-radius: 58px;
-    box-shadow: none;
-    transition: border-color 700ms ease, box-shadow 700ms ease;
-  }
-
-  body:not([data-phase="boot"]) .iphone-frame {
-    border-color: #08090b;
-    box-shadow:
-      0 42px 90px rgba(0, 0, 0, 0.55),
-      0 10px 28px rgba(0, 0, 0, 0.42),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  }
-
-  .ios-app,
-  .app-host {
-    border-radius: 48px;
-  }
-
-  .dynamic-island {
-    position: absolute;
-    z-index: 60;
-    top: 13px;
-    left: 50%;
-    display: block;
-    width: 112px;
-    height: 31px;
-    border-radius: 999px;
-    background: #000000;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
-    opacity: 0;
-    transform: translateX(-50%) scale(0.94);
-    transition: opacity 500ms ease 300ms, transform 500ms cubic-bezier(0.16, 1, 0.3, 1) 300ms;
-  }
-
-  body:not([data-phase="boot"]) .dynamic-island {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
-  }
-
-  .unlock-affordance {
-    bottom: 11px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    transition-delay: 0ms !important;
-  }
-
-  .swipe-prompt {
-    opacity: 1;
-    transform: none;
-  }
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .is-editing .icon-swatch { outline: 1px solid #fffa; }
 }
-
 @media (prefers-reduced-transparency: reduce) {
-  .glass-surface {
-    background: var(--ios-material-solid);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+  .glass { background: #38324d; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .spotlight { background: #262238; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .remove-options, .remove-cancel { background: #f3f3f7; }
+  .lock-clock { background: #c9b1ec; backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .glass-surface {
-    background: var(--ios-material-solid);
-  }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .spotlight { background: #37304e; }
+  .remove-options, .remove-cancel { background: #f3f3f7; }
 }
-
 @media (prefers-contrast: more) {
-  :root {
-    --ios-label: #000000;
-    --ios-secondary-label: #26262b;
-  }
-
-  .glass-surface {
-    border-color: rgba(0, 0, 0, 0.52);
-  }
-
-  .home-indicator {
-    background: #000000;
-  }
+  .icon-label { text-shadow: 0 1px 2px #000, 0 0 4px #000; font-weight: 600; }
+  .glass { border-color: #ffffffb3; }
 }

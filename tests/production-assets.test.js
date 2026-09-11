@@ -102,7 +102,7 @@ test("the desktop boot gate consumes the shared non-theme manifest", () => {
   const html = read("index.html");
   const source = read("index.js");
 
-  assert.ok(html.indexOf("./boot-assets.js?v=20260810-1") < html.indexOf("./index.js?v=20260810-1"));
+  assert.ok(html.indexOf("./boot-assets.js?v=20260816-1") < html.indexOf("./index.js?v=20260819-1"));
   assert.match(source, /window\.Windows7BootAssets/);
   assert.match(source, /NON_THEME_BOOT_ASSETS/);
   assert.match(source, /await Promise\.allSettled/);
