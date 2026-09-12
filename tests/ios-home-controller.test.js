@@ -17,7 +17,7 @@ function fixture(extra = {}) {
   const calls = [];
   const context = {
     ...core, calls, W: 393, H: 852, scale: 1, screen: 'home', page: 1,
-    closingApp: false, openingHome: false, welcomeY: 0, lockY: -852, searchTarget: 0, gesture: null,
+    closingApp: false, openingHome: false, welcomeY: 0, lockY: -852, searchTarget: 0, gesture: null, resizePending: false,
     frame: { clientWidth: 430, clientHeight: 932 },
     root: { dataset: {}, style: { setProperty() {} }, hasPointerCapture: () => false },
     spotlight: { hidden: true }, animations: new Map(),
@@ -113,4 +113,102 @@ test('ignored drag after grabbing a settling page still snaps it into place', ()
   vm.runInContext(extract('  function endGesture(event, cancelled = false) {', '  root.addEventListener("pointerup"'), c);
   c.endGesture({ pointerId: 1, timeStamp: 20 });
   assert.ok(c.calls.some(call => Array.isArray(call) && call[0] === 'settle' && call[1] === 1));
+});
+
+// Model the browser boundary: touch implicitly captures the child, then the
+// next pointer event transfers capture to the screen and bubbles loss from it.
+function welcomeTouchFixture() {
+  const handlers = {}, child = { closest: () => null };
+  let captured = false;
+  const root = {
+    dataset: {}, style: { setProperty() {} },
+    addEventListener: (name, fn) => { handlers[name] = fn; },
+    setPointerCapture: () => { captured = true; },
+    hasPointerCapture: () => captured,
+    releasePointerCapture: () => { captured = false; }
+  };
+  const c = fixture({
+    root, screen: 'welcome', welcome: { style: {} }, home: { inert: true },
+    removeBackdrop: { hidden: true }, pageX: 0, searchProgress: 0, appFrame: null,
+    localPoint: event => ({ x: event.clientX, y: event.clientY }),
+    performance: { now: () => 200 },
+    stopGreetingCycle() {}, announce() {}, resize() {},
+    spring: (channel, from, to, velocity, render, done) => { render(to); done?.(); }
+  });
+  vm.runInContext(extract('  function setScreen(value)', '  function cancel('), c);
+  vm.runInContext(extract('  function renderWelcome(y)', '  function showWelcome()'), c);
+  vm.runInContext(extract('  function finishWelcome()', '  function renderLock('), c);
+  vm.runInContext(extract('  root.addEventListener("pointerdown"', '  root.addEventListener("contextmenu"'), c);
+  const event = (y, timeStamp, target = child) => ({
+    pointerId: 7, pointerType: 'touch', isPrimary: true, target,
+    clientX: 196, clientY: y, timeStamp
+  });
+  return { c, handlers, child, event, loseRootCapture: () => { captured = false; } };
+}
+
+test('Hello follows touch and reaches Home after implicit child capture transfers to root', () => {
+  const { c, handlers, event } = welcomeTouchFixture();
+  handlers.pointerdown(event(780, 0));
+  handlers.pointermove(event(760, 20));
+  assert.equal(c.welcomeY, -20, 'Hello follows the finger before release');
+  handlers.lostpointercapture(event(760, 21)); // bubbles from touched child
+  handlers.pointermove(event(660, 100));
+  assert.equal(c.welcomeY, -120, 'capture handoff must not reset the drag');
+  handlers.pointerup(event(650, 110));
+  assert.equal(c.screen, 'home');
+  assert.equal(c.home.inert, false);
+  assert.equal(c.gesture, null);
+});
+
+test('genuine root capture loss cancels Hello without opening Home', () => {
+  const { c, handlers, event, loseRootCapture } = welcomeTouchFixture();
+  handlers.pointerdown(event(780, 0));
+  handlers.pointermove(event(660, 100));
+  loseRootCapture();
+  handlers.lostpointercapture(event(660, 101, c.root));
+  assert.equal(c.gesture, null);
+  assert.equal(c.welcomeY, 0);
+  assert.equal(c.screen, 'welcome');
+});
+
+test('OS pointer cancellation returns Hello instead of committing a fast swipe', () => {
+  const { c, handlers, event } = welcomeTouchFixture();
+  handlers.pointerdown(event(780, 0));
+  handlers.pointermove(event(660, 50));
+  handlers.pointercancel(event(650, 60));
+  assert.equal(c.gesture, null);
+  assert.equal(c.welcomeY, 0);
+  assert.equal(c.screen, 'welcome');
+});
+
+test('short slow Hello drag settles back instead of accidentally opening Home', () => {
+  const { c, handlers, event } = welcomeTouchFixture();
+  handlers.pointerdown(event(780, 0));
+  handlers.pointermove(event(760, 200));
+  handlers.pointerup(event(760, 400));
+  assert.equal(c.welcomeY, 0);
+  assert.equal(c.screen, 'welcome');
+});
+
+test('browser viewport resize leaves an active Hello touch in its original coordinates', () => {
+  const gesture = { id: 7, mode: 'welcome' };
+  const c = fixture({ screen: 'welcome', welcomeY: -50, gesture });
+  resize(c);
+  assert.equal(c.gesture, gesture);
+  assert.equal(c.welcomeY, -50);
+  assert.equal(c.scale, 1);
+  assert.equal(c.resizePending, true);
+});
+
+test('viewport resize deferred during touch is applied after release', () => {
+  const { c, handlers, event } = welcomeTouchFixture();
+  let applied = 0;
+  c.resize = () => { applied++; };
+  handlers.pointerdown(event(780, 0));
+  c.resizePending = true;
+  handlers.pointermove(event(660, 100));
+  handlers.pointerup(event(650, 110));
+  assert.equal(applied, 1);
+  assert.equal(c.resizePending, false);
+  assert.equal(c.screen, 'home');
 });

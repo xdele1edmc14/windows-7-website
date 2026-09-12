@@ -18,6 +18,7 @@
 
   let W = 393, H = 852, scale = 1, screen = "boot", page = 0, pageX = 0;
   let closingApp = false, openingHome = false;
+  let resizePending = false;
   let editing = false, activeApp = null, origin = null, appFrame = null;
   let welcomeY = 0, lockY = -H, searchProgress = 0, searchTarget = 0, searchInvoker = null;
   let removeId = null, removeInvoker = null, gesture = null, holdTimer = 0;
@@ -421,7 +422,8 @@
     if (screen === "welcome") { mode = "welcome"; openingHome = false; cancel("welcome"); }
     else if (screen === "notification") { mode = "notification-dismiss"; cancel("lock"); }
     else if (screen === "app") {
-      // Only the bottom handle/44pt gesture strip initiates closing.
+      // Only the enlarged bottom gesture strip initiates closing. It reaches
+      // above native OS navigation, whose screen-edge gesture a site cannot own.
       if (!target.closest(".app-home-target")) return;
       mode = "close"; closingApp = false; cancel("app");
     } else if (!spotlight.hidden) {
@@ -516,10 +518,17 @@
       const open = cancelled || (g.moved && searchProgress > .65 && vy > -.45);
       settleSearch(open, vy);
     }
+    // Browser chrome may resize the viewport during touch. Keep one coordinate
+    // system until release, then settle against the latest measured geometry.
+    if (resizePending) { resizePending = false; resize(); }
   }
   root.addEventListener("pointerup", event => endGesture(event));
   root.addEventListener("pointercancel", event => endGesture(event, true));
-  root.addEventListener("lostpointercapture", event => endGesture(event, true));
+  root.addEventListener("lostpointercapture", event => {
+    // Touch implicitly captures the touched button/span. Transferring capture
+    // to root emits a bubbling loss from that child; it is NOT a cancelled drag.
+    if (event.target === root && !root.hasPointerCapture(event.pointerId)) endGesture(event, true);
+  });
   root.addEventListener("contextmenu", event => event.preventDefault());
   root.addEventListener("click", event => {
     if (performance.now() < suppressClickUntil && event.detail !== 0) { event.preventDefault(); event.stopImmediatePropagation(); }
@@ -617,11 +626,11 @@
     const nextW = frame.clientWidth / nextScale;
     const nextH = frame.clientHeight / nextScale;
     if (!nextScale || (Math.abs(nextScale - scale) < .0001 && Math.abs(nextH - H) < .1 && Math.abs(nextW - W) < .1)) return;
+    if (gesture) { resizePending = true; return; }
     scale = nextScale; W = nextW; H = nextH;
     root.style.setProperty("--screen-scale", scale);
     root.style.setProperty("--screen-w", W + "px");
     root.style.setProperty("--screen-h", H + "px");
-    if (gesture) { const id = gesture.id; gesture = null; stopHold(); if (root.hasPointerCapture(id)) root.releasePointerCapture(id); }
     for (const channel of [...animations.keys()]) cancel(channel);
     renderPage(-page * W);
     if (screen === "app") {
