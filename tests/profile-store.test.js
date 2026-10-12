@@ -119,7 +119,8 @@ test("restore rebuilds canonical desktop and recycle arrays with file contents",
     sequence: 18,
     roots: createRoots(),
     settings: {
-      desktopAutoArrange: true,
+      desktopAutoArrange: false,
+      desktopSort: "type",
       desktopAlignToGrid: false,
       wallpaper: "blob:wallpaper",
       themeId: "nature",
@@ -142,6 +143,10 @@ test("restore rebuilds canonical desktop and recycle arrays with file contents",
   assert.equal(await note.file.text(), "remember me");
   assert.equal(note.meta.createdAt instanceof Date, true);
   assert.equal(restored.settings.themeId, "nature");
+  assert.equal(restored.settings.desktopAutoArrange, false);
+  assert.equal(restored.settings.desktopSort, "type");
+  assert.equal(restored.desktopItems[0].x, 10);
+  assert.equal(restored.desktopItems[0].y, 10);
   assert.deepEqual(restored.settings.pinnedItems, [
     { type: "app", appName: "notepad" },
     { type: "node", nodeId: "note-1" }
@@ -188,6 +193,7 @@ test("settings normalization clamps invalid values to safe defaults", () => {
     {
       desktopIconSize: "medium",
       desktopAutoArrange: true,
+      desktopSort: "name",
       desktopAlignToGrid: false,
       wallpaper: "./assets/img0.png",
       themeId: "windows-7",
@@ -199,6 +205,23 @@ test("settings normalization clamps invalid values to safe defaults", () => {
       apps: {}
     }
   );
+});
+
+test("new profiles default to an automatically arranged desktop sorted by name", () => {
+  const settings = normalizeProfileSettings();
+
+  assert.equal(settings.desktopAutoArrange, true);
+  assert.equal(settings.desktopSort, "name");
+});
+
+test("saved profiles preserve an explicitly disabled automatic arrangement", () => {
+  const settings = normalizeProfileSettings({
+    desktopAutoArrange: false,
+    desktopSort: "type"
+  });
+
+  assert.equal(settings.desktopAutoArrange, false);
+  assert.equal(settings.desktopSort, "type");
 });
 
 test("settings normalization preserves approved themes and rejects unknown identifiers", () => {

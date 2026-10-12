@@ -81,3 +81,21 @@ test("restored filesystem continues allocating IDs after the saved sequence", ()
   assert.equal(numericId > 0, true);
   assert.notEqual(afterRestore.id, restored.resolve("/Documents/Before Save").id);
 });
+
+test("desktop name sorting produces a stable alphabetical auto-arrange order", () => {
+  const { sortDesktopItems } = loadShellApi();
+  const items = [
+    { name: "YouTube", type: "app-shortcut", permanent: true },
+    { name: "Recycle Bin", type: "recycle", permanent: true },
+    { name: "DevHub", type: "app-shortcut", permanent: true },
+    { name: "notes 10.txt", type: "text", permanent: false },
+    { name: "notes 2.txt", type: "text", permanent: false }
+  ];
+
+  sortDesktopItems(items, "name");
+
+  assert.deepEqual(
+    items.map(({ name }) => name),
+    ["DevHub", "notes 2.txt", "notes 10.txt", "Recycle Bin", "YouTube"]
+  );
+});

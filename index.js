@@ -65,6 +65,15 @@
 
   const assignStyles = (element, styles) => Object.assign(element.style, styles);
 
+  const sortDesktopItems = (items, property = "name") => items.sort((a, b) => {
+    if (property !== "name" && a.permanent !== b.permanent) return a.permanent ? -1 : 1;
+    const result = String(a[property]).localeCompare(String(b[property]), undefined, {
+      sensitivity: "base",
+      numeric: true
+    });
+    return result || a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
+  });
+
   const wait = (milliseconds) => new Promise((resolve) => {
     window.setTimeout(resolve, milliseconds);
   });
@@ -675,7 +684,8 @@
     };
     #desktopItemSequence = 0;
     #desktopIconSize = "medium";
-    #desktopAutoArrange = false;
+    #desktopAutoArrange = true;
+    #desktopSort = "name";
     #desktopAlignToGrid = true;
     #contextMenuPoint = { x: 16, y: 96 };
     #listeners = new AbortController();
@@ -769,6 +779,7 @@
     #applyProfileSettings(settings) {
       this.#desktopIconSize = settings.desktopIconSize;
       this.#desktopAutoArrange = settings.desktopAutoArrange;
+      this.#desktopSort = settings.desktopSort;
       this.#desktopAlignToGrid = settings.desktopAlignToGrid;
       this.#currentWallpaper = settings.wallpaper;
       this.#currentThemeId = settings.themeId;
@@ -781,6 +792,7 @@
       return this.#fileSystem.captureProfile({
         desktopIconSize: this.#desktopIconSize,
         desktopAutoArrange: this.#desktopAutoArrange,
+        desktopSort: this.#desktopSort,
         desktopAlignToGrid: this.#desktopAlignToGrid,
         wallpaper: this.#currentWallpaper,
         themeId: this.#currentThemeId,
@@ -2281,7 +2293,10 @@
 
     #renderDesktopItems() {
       if (!this.#desktopIconLayer) return;
-      if (this.#desktopAutoArrange) this.#arrangeDesktopItems();
+      if (this.#desktopAutoArrange) {
+        this.#sortDesktopItemData(this.#desktopSort);
+        this.#arrangeDesktopItems();
+      }
 
       const fragment = document.createDocumentFragment();
       this.#fileSystem.desktopItems
@@ -3182,8 +3197,8 @@
           } }
         ] },
         { label: "Sort by", submenu: [
-          { label: "Name", action: () => this.#sortDesktopItems("name") },
-          { label: "Item type", action: () => this.#sortDesktopItems("type") }
+          { label: "Name", checked: this.#desktopAutoArrange && this.#desktopSort === "name", action: () => this.#sortDesktopItems("name") },
+          { label: "Item type", checked: this.#desktopAutoArrange && this.#desktopSort === "type", action: () => this.#sortDesktopItems("type") }
         ] },
         { label: "Refresh", action: () => this.#refreshDesktopIcons() },
         { separator: true },
@@ -3378,13 +3393,15 @@
     }
 
     #sortDesktopItems(property) {
-      this.#fileSystem.desktopItems.sort((a, b) => {
-        if (a.permanent !== b.permanent) return a.permanent ? -1 : 1;
-        return String(a[property]).localeCompare(String(b[property]), undefined, { sensitivity: "base" });
-      });
+      this.#desktopSort = property;
+      this.#sortDesktopItemData(property);
       this.#desktopAutoArrange = true;
       this.#renderDesktopItems();
       this.#scheduleProfileSave();
+    }
+
+    #sortDesktopItemData(property) {
+      sortDesktopItems(this.#fileSystem.desktopItems, property);
     }
 
     #refreshDesktopIcons() {
@@ -6868,7 +6885,7 @@
     }
   }
 
-  window.Windows7Shell = Object.freeze({ ShellFileSystem, Windows7Engine });
+  window.Windows7Shell = Object.freeze({ ShellFileSystem, Windows7Engine, sortDesktopItems });
 
   const root = document.getElementById("windows-7-root");
   if (root) {

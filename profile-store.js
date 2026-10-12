@@ -70,7 +70,12 @@
     desktopIconSize: ["large", "medium", "small"].includes(settings.desktopIconSize)
       ? settings.desktopIconSize
       : "medium",
-    desktopAutoArrange: Boolean(settings.desktopAutoArrange),
+    desktopAutoArrange: settings.desktopAutoArrange === undefined
+      ? true
+      : Boolean(settings.desktopAutoArrange),
+    desktopSort: ["name", "type"].includes(settings.desktopSort)
+      ? settings.desktopSort
+      : "name",
     desktopAlignToGrid: settings.desktopAlignToGrid === undefined
       ? true
       : Boolean(settings.desktopAlignToGrid),
