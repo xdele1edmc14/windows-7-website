@@ -224,6 +224,10 @@
   perspective: 900px;
 }
 
+.media-center-gallery--collection {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
 #windows-7-root .media-center-project {
   position: relative;
   display: flex;

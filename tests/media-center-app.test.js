@@ -487,21 +487,23 @@ test("category and project navigation wrap through the data-driven library", () 
   assert.equal(app.element.querySelectorAll('[data-media-project]').length, 3);
 });
 
-test("larger sections use a three-preview carousel without hiding their remaining items", () => {
+test("PFP collection keeps all six tiles stable while selection changes", () => {
   const { app } = createFixture();
 
   app.navigateCategory(-1);
   assert.deepEqual(
     app.element.querySelectorAll('[data-media-project]').map((tile) => tile.getAttribute("data-media-project")),
-    ["0", "1", "2"]
+    ["0", "1", "2", "3", "4", "5"]
   );
+  assert.equal(app.element.querySelector('[data-media-gallery]').classList.contains("media-center-gallery--collection"), true);
+  assert.equal(app.element.querySelector('.media-center-project--featured'), null);
   assert.equal(app.element.querySelector('[data-media-selected-title]').textContent, "PFP 1");
   assert.equal(app.element.querySelector('.media-center-library__pagination').textContent.includes("1 / 6"), true);
 
   app.navigateProject(1);
   assert.deepEqual(
     app.element.querySelectorAll('[data-media-project]').map((tile) => tile.getAttribute("data-media-project")),
-    ["1", "2", "3"]
+    ["0", "1", "2", "3", "4", "5"]
   );
   assert.equal(app.element.querySelector('[data-media-project="1"]').classList.contains("is-selected"), true);
   assert.equal(app.element.querySelector('[data-media-selected-title]').textContent, "PFP 2");
@@ -749,9 +751,11 @@ test("production registers Media Center assets, shell entry points, lifecycle, a
 
   assert.equal(ASSETS.mediaCenter, "./assets/media center/main_logo.png");
   assert.ok(NON_THEME_BOOT_ASSETS.includes(ASSETS.mediaCenter));
-  assert.ok(html.indexOf("./media-center.css?v=20260820-1") < html.indexOf("./media-center-data.js?v=20260820-1"));
-  assert.ok(html.indexOf("./media-center-data.js?v=20260820-1") < html.indexOf("./media-center.js?v=20260820-3"));
-  assert.ok(html.indexOf("./media-center.js?v=20260820-3") < html.indexOf("./index.js?v=20260819-1"));
+  assert.match(html, /\.\/media-center\.css\?v=20261014-1/);
+  assert.match(html, /\.\/media-center\.js\?v=20261014-1/);
+  assert.ok(html.indexOf("./media-center.css?v=20261014-1") < html.indexOf("./media-center-data.js?v=20260820-1"));
+  assert.ok(html.indexOf("./media-center-data.js?v=20260820-1") < html.indexOf("./media-center.js?v=20261014-1"));
+  assert.ok(html.indexOf("./media-center.js?v=20261014-1") < html.indexOf("./index.js?v=20260819-1"));
   assert.match(html, /data-start-icon="media-center"[\s\S]*?<span>Media Center<\/span>/);
   assert.match(source, /media-center["']\s*,\s*["']Media Center/);
   assert.match(source, /["']media-center["']:\s*ASSETS\.mediaCenter/);

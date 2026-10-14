@@ -379,22 +379,18 @@
         "data-media-category-title": "",
         text: data.CATEGORIES[this.#state.categoryIndex].toLocaleUpperCase()
       });
+      const isCollection = projects.length > 3;
       const gallery = createElement(this.#document, "div", {
-        className: "media-center-gallery",
+        className: `media-center-gallery${isCollection ? " media-center-gallery--collection" : ""}`,
         "data-media-gallery": ""
       });
-      const previewEntries = projects.length <= 3
-        ? projects.map((project, index) => ({ project, index }))
-        : Array.from({ length: 3 }, (_, offset) => {
-          const index = (this.#state.projectIndex + offset) % projects.length;
-          return { project: projects[index], index };
-        });
+      const previewEntries = projects.map((project, index) => ({ project, index }));
 
       previewEntries.forEach(({ project, index }) => {
         const isSelected = index === this.#state.projectIndex;
         const tile = createElement(this.#document, "button", {
           type: "button",
-          className: `media-center-project${isSelected ? " is-selected media-center-project--featured" : ""}`,
+          className: `media-center-project${isSelected ? ` is-selected${isCollection ? "" : " media-center-project--featured"}` : ""}`,
           "data-media-project": String(index),
           "aria-selected": String(isSelected),
           "aria-label": `Open ${project.title}`
